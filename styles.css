@@ -447,6 +447,42 @@ body {
   background: rgba(255, 42, 95, 0.2);
 }
 
+/* Search Box (was missing base styles) */
+.search-box {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(10, 14, 23, 0.8);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  padding: 9px 14px;
+  min-width: 220px;
+}
+
+.search-box svg {
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.search-box input {
+  background: transparent;
+  border: none;
+  outline: none;
+  color: var(--text-primary);
+  font-family: var(--font-main);
+  font-size: 14px;
+  width: 100%;
+}
+
+.search-box input::placeholder {
+  color: var(--text-muted);
+}
+
+.btn-sm {
+  padding: 8px 14px !important;
+  font-size: 12.5px !important;
+}
+
 /* Data Table Section */
 .data-section {
   background: var(--bg-card);
@@ -885,6 +921,401 @@ body {
 /* Header summary for Print layout */
 .print-only-header {
   display: none;
+}
+
+/* ==========================================================================
+   MOBILE RESPONSIVE DESIGN
+   ========================================================================== */
+
+/* Global touch improvements (apply at all sizes, harmless on desktop) */
+button, .btn, .chip-btn, .btn-table-action, .btn-reset-filter {
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+/* Floating Scan Button - hidden by default, shown on mobile below */
+.fab-scanner {
+  display: none;
+  position: fixed;
+  right: 18px;
+  bottom: calc(18px + env(safe-area-inset-bottom));
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--accent-cyan), var(--accent-blue));
+  color: #060c18;
+  border: none;
+  font-size: 26px;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 10px 25px rgba(0, 242, 254, 0.45), 0 4px 14px rgba(0, 0, 0, 0.5);
+  z-index: 500;
+  cursor: pointer;
+  transition: transform 0.15s ease;
+}
+
+.fab-scanner:active {
+  transform: scale(0.9);
+}
+
+@media (max-width: 900px) {
+  .header-actions {
+    flex-wrap: wrap;
+  }
+}
+
+@media (max-width: 640px) {
+  /* Prevent iOS Safari auto-zoom on input focus (needs >=16px font) */
+  .filter-control,
+  .form-control,
+  #searchInput,
+  #inputNewDept {
+    font-size: 16px !important;
+  }
+
+  body {
+    padding-bottom: 20px;
+  }
+
+  /* Header */
+  .header {
+    padding: 12px 16px;
+    padding-top: calc(12px + env(safe-area-inset-top));
+  }
+
+  .header-container {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+
+  .brand-icon {
+    width: 38px;
+    height: 38px;
+    font-size: 18px;
+    border-radius: 10px;
+  }
+
+  .brand-title {
+    font-size: 17px;
+  }
+
+  .brand-subtitle {
+    display: none;
+  }
+
+  .header-actions {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    gap: 8px;
+    padding-bottom: 2px;
+  }
+
+  .header-actions::-webkit-scrollbar {
+    display: none;
+  }
+
+  .header-actions .btn {
+    padding: 9px 14px;
+    font-size: 12.5px;
+    flex-shrink: 0;
+  }
+
+  /* Scanner CTA moves to the floating button on mobile */
+  .btn-scanner-header {
+    display: none;
+  }
+
+  .fab-scanner {
+    display: flex;
+  }
+
+  /* Main Layout */
+  .main-container {
+    padding: 0 14px;
+    margin-top: 18px;
+    gap: 16px;
+    padding-bottom: 90px;
+  }
+
+  /* Stats */
+  .stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+  }
+
+  .stat-card {
+    padding: 14px 16px;
+  }
+
+  .stat-info .stat-value {
+    font-size: 19px;
+  }
+
+  .stat-info .stat-label {
+    font-size: 10.5px;
+  }
+
+  .stat-icon-wrapper {
+    width: 38px;
+    height: 38px;
+    font-size: 17px;
+    border-radius: 10px;
+  }
+
+  /* Action Banner - CTA replaced by the FAB, keep the message only */
+  .action-banner {
+    padding: 18px 20px;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+  }
+
+  .action-banner .btn-group {
+    display: none;
+  }
+
+  .action-text h2 {
+    font-size: 16px;
+  }
+
+  .action-text p {
+    font-size: 12.5px;
+  }
+
+  /* Demo Bar */
+  .demo-bar {
+    flex-direction: column;
+    align-items: stretch;
+    padding: 12px 14px;
+    gap: 10px;
+  }
+
+  .demo-chips {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    padding-bottom: 2px;
+  }
+
+  .demo-chips::-webkit-scrollbar {
+    display: none;
+  }
+
+  .chip-btn {
+    flex-shrink: 0;
+    font-size: 11.5px;
+    padding: 7px 12px;
+  }
+
+  /* Filter Card */
+  .filter-card {
+    padding: 14px 16px;
+  }
+
+  .filter-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+
+  .filter-header-btns {
+    width: 100%;
+  }
+
+  .filter-header-btns .btn-sm,
+  .filter-header-btns .btn-reset-filter {
+    flex: 1;
+    text-align: center;
+    justify-content: center;
+    padding-top: 10px !important;
+    padding-bottom: 10px !important;
+  }
+
+  .filter-grid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .filter-control {
+    padding: 12px 14px;
+  }
+
+  /* Data Section / Table -> Cards */
+  .data-section {
+    padding: 16px;
+  }
+
+  .section-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+
+  .section-title {
+    font-size: 17px;
+  }
+
+  .section-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .search-box {
+    min-width: 0;
+    width: 100%;
+    padding: 11px 14px;
+  }
+
+  .table-responsive {
+    overflow-x: visible;
+    border: none;
+  }
+
+  .custom-table,
+  .custom-table tbody,
+  .custom-table tr {
+    display: block;
+    width: 100%;
+  }
+
+  .custom-table thead {
+    display: none;
+  }
+
+  .custom-table tbody tr {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    margin-bottom: 12px;
+    padding: 4px 16px;
+    box-shadow: var(--shadow-main);
+  }
+
+  .custom-table td {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+    padding: 11px 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    text-align: right;
+  }
+
+  .custom-table td:last-child {
+    border-bottom: none;
+  }
+
+  .custom-table td::before {
+    content: attr(data-label);
+    font-size: 10.5px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-muted);
+    text-align: left;
+    flex-shrink: 0;
+  }
+
+  .custom-table td.empty-state-cell {
+    display: block !important;
+    text-align: center !important;
+  }
+
+  .custom-table td.empty-state-cell::before {
+    content: none;
+  }
+
+  .custom-table td .action-btns {
+    justify-content: flex-end;
+    width: 100%;
+  }
+
+  .btn-table-action {
+    width: 38px;
+    height: 38px;
+  }
+
+  /* Modals become full-screen sheets on mobile */
+  .modal-overlay {
+    padding: 0;
+  }
+
+  .modal-container {
+    width: 100% !important;
+    max-width: 100% !important;
+    height: 100%;
+    max-height: 100%;
+    border-radius: 0 !important;
+    margin: 0;
+  }
+
+  .modal-header {
+    padding: 16px 18px;
+    padding-top: calc(16px + env(safe-area-inset-top));
+  }
+
+  .modal-title {
+    font-size: 17px;
+  }
+
+  .modal-body {
+    padding: 18px;
+    gap: 20px;
+  }
+
+  .modal-footer {
+    padding: 14px 18px;
+    padding-bottom: calc(14px + env(safe-area-inset-bottom));
+  }
+
+  .form-grid {
+    grid-template-columns: 1fr;
+    gap: 14px;
+  }
+
+  .form-group.full-width {
+    grid-column: span 1;
+  }
+
+  .form-actions-row {
+    display: flex;
+    flex-direction: row;
+    gap: 10px;
+  }
+
+  .form-actions-row .btn-secondary {
+    flex: 0 0 auto;
+    min-width: 96px;
+  }
+
+  .scanner-view-container {
+    height: 300px;
+  }
+
+  /* Toasts */
+  .toast-container {
+    left: 16px;
+    right: 16px;
+    bottom: calc(16px + env(safe-area-inset-bottom));
+  }
+
+  .toast {
+    width: 100%;
+  }
+}
+
+@media (max-width: 380px) {
+  .stats-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .stat-info .stat-value {
+    font-size: 17px;
+  }
 }
 
 /* Professional Print / PDF Styling */

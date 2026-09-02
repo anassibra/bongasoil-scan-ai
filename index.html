@@ -2,7 +2,12 @@
 <html lang="fr">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#090d16">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="BonGasoil Scan">
+  <meta name="mobile-web-app-capable" content="yes">
   <title>Scanner Intelligent de Bons de Gasoil - Extraction Manuscrite & Filtres Dynamiques</title>
   <meta name="description" content="Scanner de bons de gasoil avec extraction automatique des données écrites au stylo, filtres dynamiques (personnes, immatriculations, date unique, département) et export Excel clair.">
   <link rel="stylesheet" href="styles.css">
@@ -21,19 +26,19 @@
       </div>
       <div class="header-actions">
         <button id="btnOpenDeptModal" class="btn btn-outline-purple">
-          ⚙️ Gérer les Départements
+          ⚙️ <span class="btn-label">Gérer les Départements</span>
         </button>
         <button id="btnPrintTable" class="btn btn-outline-cyan">
-          🖨️ Imprimer / PDF
+          🖨️ <span class="btn-label">Imprimer / PDF</span>
         </button>
         <button id="btnExportExcel" class="btn btn-primary">
-          📊 Exporter Excel (.xls)
+          📊 <span class="btn-label">Exporter Excel (.xls)</span>
         </button>
         <button id="btnExportCsv" class="btn btn-outline-emerald">
-          📄 CSV
+          📄 <span class="btn-label">CSV</span>
         </button>
-        <button id="btnOpenScanner" class="btn btn-primary">
-          📷 Scanner un Bon
+        <button id="btnOpenScanner" class="btn btn-primary btn-scanner-header">
+          📷 <span class="btn-label">Scanner un Bon</span>
         </button>
       </div>
     </div>
@@ -120,7 +125,7 @@
       <div class="filter-card">
         <div class="filter-header">
           <span class="filter-title">🔍 Filtres Dynamiques (Département, Personne, Immatriculation, Date)</span>
-          <div style="display: flex; gap: 10px;">
+          <div class="filter-header-btns" style="display: flex; gap: 10px;">
             <button onclick="openDeptModal()" class="btn btn-outline-purple btn-sm">
               ⚙️ Gérer Départements
             </button>
@@ -341,8 +346,11 @@
             <input type="text" id="inputImmatriculation" class="form-control" required placeholder="ex: 1234-B-26">
           </div>
 
-          <div class="form-group full-width" style="margin-top: 10px;">
-            <button type="submit" class="btn btn-primary" style="width: 100%; justify-content: center;">
+          <div class="form-group full-width form-actions-row" style="margin-top: 10px;">
+            <button type="button" id="btnCancelEdit" class="btn btn-secondary" style="justify-content: center;">
+              Annuler
+            </button>
+            <button type="submit" class="btn btn-primary" style="flex: 1; justify-content: center;">
               💾 Enregistrer dans le Tableau
             </button>
           </div>
@@ -370,6 +378,11 @@
       </div>
     </div>
   </div>
+
+  <!-- Floating Scan Button (Mobile Only) -->
+  <button id="btnFabScanner" class="fab-scanner" aria-label="Scanner un bon de gasoil" onclick="document.getElementById('btnOpenScanner').click()">
+    📷
+  </button>
 
   <!-- Toast Notification Container -->
   <div id="toastContainer" class="toast-container"></div>

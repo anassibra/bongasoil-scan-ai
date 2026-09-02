@@ -280,7 +280,7 @@ function renderTable() {
   if (filtered.length === 0) {
     tbody.innerHTML = `
       <tr>
-        <td colspan="7" style="text-align: center; padding: 40px; color: var(--text-muted);">
+        <td class="empty-state-cell" colspan="7" style="text-align: center; padding: 40px; color: var(--text-muted);">
           <div style="font-size: 32px; margin-bottom: 8px;">⛽</div>
           Aucun bon de gasoil ne correspond à vos filtres actuels.
         </td>
@@ -294,26 +294,26 @@ function renderTable() {
     const deptClass = getDeptClass(record.departement);
 
     tr.innerHTML = `
-      <td>
+      <td data-label="Nom & Prénom">
         <div style="display: flex; align-items: center; gap: 8px;">
           <strong style="color: #fff;">${escapeHtml(record.nomPrenom || 'Non renseigné')}</strong>
           <span class="badge-handwritten" title="Case écrite par stylo sur le bon">✍️ Stylo</span>
         </div>
       </td>
-      <td><span style="color: var(--text-secondary); font-size: 13px;">📅 ${record.date || '-'}</span></td>
-      <td><span class="amount-text">${parseFloat(record.montant || 0).toFixed(2)} ${record.devise || 'MAD'}</span></td>
-      <td>
+      <td data-label="Date"><span style="color: var(--text-secondary); font-size: 13px;">📅 ${record.date || '-'}</span></td>
+      <td data-label="Montant"><span class="amount-text">${parseFloat(record.montant || 0).toFixed(2)} ${record.devise || 'MAD'}</span></td>
+      <td data-label="Département">
         <span class="department-badge ${deptClass}">
           ${escapeHtml(record.departement || 'Autre')}
         </span>
       </td>
-      <td>
+      <td data-label="Kilométrage">
         <span class="mileage-text">🚗 ${(parseInt(record.kilometrage) || 0).toLocaleString('fr-FR')} km</span>
       </td>
-      <td>
+      <td data-label="Immatriculation">
         <span class="plate-tag">${escapeHtml(record.immatriculation || 'N/A')}</span>
       </td>
-      <td>
+      <td data-label="Actions">
         <div class="action-btns">
           <button class="btn-table-action" title="Voir le Bon scanné" onclick="viewVoucherImage('${record.id}')">
             👁️
