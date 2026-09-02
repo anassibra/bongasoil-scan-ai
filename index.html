@@ -2,392 +2,168 @@
 <html lang="fr">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover">
-  <meta name="theme-color" content="#090d16">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#1f2937">
   <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="apple-mobile-web-app-title" content="BonGasoil Scan">
-  <meta name="mobile-web-app-capable" content="yes">
-  <title>Scanner Intelligent de Bons de Gasoil - Extraction Manuscrite & Filtres Dynamiques</title>
-  <meta name="description" content="Scanner de bons de gasoil avec extraction automatique des données écrites au stylo, filtres dynamiques (personnes, immatriculations, date unique, département) et export Excel clair.">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <meta name="apple-mobile-web-app-title" content="BonGasoil">
+  <title>BonGasoil Scan</title>
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
 
-  <!-- App Header -->
-  <header class="header">
-    <div class="header-container">
-      <div class="brand">
-        <div class="brand-icon">⛽</div>
-        <div>
-          <h1 class="brand-title">BonGasoil Scan AI</h1>
-          <p class="brand-subtitle">Extraction automatique des bons de carburant & gestion du parc</p>
+  <!-- Header Simplifié -->
+  <header class="app-header">
+    <div class="header-content">
+      <h1 class="app-title">⛽ BonGasoil Scan</h1>
+      <div class="header-stats">
+        <div class="stat-mini">
+          <span class="stat-value" id="statCount">0</span>
+          <span class="stat-label">bons</span>
         </div>
-      </div>
-      <div class="header-actions">
-        <button id="btnOpenDeptModal" class="btn btn-outline-purple">
-          ⚙️ <span class="btn-label">Gérer les Départements</span>
-        </button>
-        <button id="btnPrintTable" class="btn btn-outline-cyan">
-          🖨️ <span class="btn-label">Imprimer / PDF</span>
-        </button>
-        <button id="btnExportExcel" class="btn btn-primary">
-          📊 <span class="btn-label">Exporter Excel (.xls)</span>
-        </button>
-        <button id="btnExportCsv" class="btn btn-outline-emerald">
-          📄 <span class="btn-label">CSV</span>
-        </button>
-        <button id="btnOpenScanner" class="btn btn-primary btn-scanner-header">
-          📷 <span class="btn-label">Scanner un Bon</span>
-        </button>
+        <div class="stat-mini">
+          <span class="stat-value" id="statTotal">0</span>
+          <span class="stat-label">DH</span>
+        </div>
       </div>
     </div>
   </header>
 
-  <main class="main-container">
+  <main class="app-main">
 
-    <!-- Print Only Header (Visible in print preview / PDF) -->
-    <div class="print-only-header">
-      <h1>RAPPORT RÉCAPITULATIF DES BONS DE GASOIL</h1>
-      <p>Imprimé le <span id="printHeaderDate"></span> - Document Officiel de Suivi Carburant</p>
-    </div>
-
-    <!-- KPI Summary Statistics -->
-    <section class="stats-grid">
-      <div class="stat-card">
-        <div class="stat-info">
-          <div class="stat-label">Total Dépenses Gasoil</div>
-          <div id="statTotalSpend" class="stat-value">0.00 DH</div>
-        </div>
-        <div class="stat-icon-wrapper stat-icon-emerald">💰</div>
-      </div>
-
-      <div class="stat-card">
-        <div class="stat-info">
-          <div class="stat-label">Bons Numérisés</div>
-          <div id="statTotalCount" class="stat-value">0</div>
-        </div>
-        <div class="stat-icon-wrapper stat-icon-cyan">🧾</div>
-      </div>
-
-      <div class="stat-card">
-        <div class="stat-info">
-          <div class="stat-label">Kilométrage Moyen</div>
-          <div id="statAvgMileage" class="stat-value">0 km</div>
-        </div>
-        <div class="stat-icon-wrapper stat-icon-purple">🚗</div>
-      </div>
-
-      <div class="stat-card">
-        <div class="stat-info">
-          <div class="stat-label">Département Top</div>
-          <div id="statTopDept" class="stat-value">-</div>
-        </div>
-        <div class="stat-icon-wrapper stat-icon-amber">🏢</div>
-      </div>
+    <!-- Section Actions Principales -->
+    <section class="action-section">
+      <button id="btnOpenScanner" class="btn-primary btn-lg">📷 Scanner un Bon</button>
+      <button id="btnExportExcel" class="btn-secondary btn-lg">📊 Exporter Excel</button>
     </section>
 
-    <!-- Scan Banner & Quick Action Bar -->
-    <section class="action-banner">
-      <div class="action-text">
-        <h2>⚡ Numérisez vos Bons de Gasoil en 1 Clic</h2>
-        <p>Prenez une photo rapide ou téléchargez le scan d'un bon. Les cases (nom, date, montant, département, kilométrage, immatriculation) seront <strong>pré-remplies par défaut</strong> dans le tableau.</p>
+    <!-- Filtres Simples -->
+    <section class="filters-section">
+      <div class="filter-row">
+        <input type="text" id="searchInput" class="filter-input" placeholder="🔍 Rechercher...">
       </div>
-      <div class="btn-group">
-        <button onclick="document.getElementById('btnOpenScanner').click()" class="btn btn-primary">
-          📸 Prendre une photo
-        </button>
+      <div class="filter-row">
+        <select id="filterDeptSelect" class="filter-select">
+          <option value="ALL">Tous les depts</option>
+        </select>
+        <select id="filterPersonSelect" class="filter-select">
+          <option value="ALL">Toutes les personnes</option>
+        </select>
       </div>
+      <button id="btnResetFilters" class="btn-reset">🔄 Réinitialiser</button>
     </section>
 
-    <!-- Demo Voucher Presets -->
-    <div class="demo-bar">
-      <div class="demo-title">
-        <span>💡 Test rapide des échantillons de reçus :</span>
-      </div>
-      <div class="demo-chips">
-        <button class="chip-btn chip-btn-highlight" onclick="runDemoPreset('realTicket')">
-          🔥 Ticket Réel Attijari / Afriquia (Awass Tahiri - 100 MAD)
-        </button>
-        <button class="chip-btn" onclick="runDemoPreset('sample1')">
-          🎟️ Bon #1 - Logistique (Karim Benali)
-        </button>
-        <button class="chip-btn" onclick="runDemoPreset('sample2')">
-          🎟️ Bon #2 - Commercial (Thomas Martin)
-        </button>
-      </div>
-    </div>
-
-    <!-- Data Table & Multi-Filter Section -->
-    <section class="data-section">
-      
-      <!-- Dynamic Filter Bar Component -->
-      <div class="filter-card">
-        <div class="filter-header">
-          <span class="filter-title">🔍 Filtres Dynamiques (Département, Personne, Immatriculation, Date)</span>
-          <div class="filter-header-btns" style="display: flex; gap: 10px;">
-            <button onclick="openDeptModal()" class="btn btn-outline-purple btn-sm">
-              ⚙️ Gérer Départements
-            </button>
-            <button id="btnResetFilters" class="btn-reset-filter">
-              🔄 Réinitialiser tous les filtres
-            </button>
-          </div>
-        </div>
-        
-        <div class="filter-grid">
-          
-          <!-- Filter 1: Department -->
-          <div class="filter-group">
-            <label for="filterDeptSelect">🏢 Département</label>
-            <select id="filterDeptSelect" class="filter-control">
-              <option value="ALL">Tous les départements</option>
-            </select>
-          </div>
-
-          <!-- Filter 2: Person (Dynamically populated from table) -->
-          <div class="filter-group">
-            <label for="filterPersonSelect">👤 Personne (Chauffeur)</label>
-            <select id="filterPersonSelect" class="filter-control">
-              <option value="ALL">Toutes les personnes</option>
-            </select>
-          </div>
-
-          <!-- Filter 3: License Plate (Dynamically populated from table) -->
-          <div class="filter-group">
-            <label for="filterPlateSelect">🚗 L'Immatriculation</label>
-            <select id="filterPlateSelect" class="filter-control">
-              <option value="ALL">Toutes les immatriculations</option>
-            </select>
-          </div>
-
-          <!-- Filter 4: Single Date on Voucher -->
-          <div class="filter-group">
-            <label for="filterDateInput">📅 Date du Bon</label>
-            <input type="date" id="filterDateInput" class="filter-control">
-          </div>
-
-        </div>
-      </div>
-
-      <div class="section-header">
-        <h2 class="section-title">
-          📋 Tableau Récapitulatif des Bons de Gasoil
-        </h2>
-
-        <div class="section-actions">
-          <button onclick="exportToExcelXML()" class="btn btn-outline-emerald btn-sm">
-            📊 Télécharger Excel (.xls)
-          </button>
-          <div class="search-box">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <circle cx="11" cy="11" r="8"></circle>
-              <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-            </svg>
-            <input type="text" id="searchInput" placeholder="Recherche rapide (nom, plaque...)...">
-          </div>
-        </div>
-      </div>
-
-      <!-- Main Responsive Table -->
-      <div class="table-responsive">
-        <table class="custom-table">
+    <!-- Tableau Principal Simplifié -->
+    <section class="table-section">
+      <div class="table-container">
+        <table class="simple-table">
           <thead>
             <tr>
-              <th class="th-handwriting">Nom & Prénom ✍️ (Stylo)</th>
-              <th>Date 📅</th>
-              <th>Montant 💰</th>
-              <th class="th-handwriting">Département ✍️ (Stylo)</th>
-              <th class="th-handwriting">Kilométrage ✍️ (Stylo)</th>
-              <th class="th-handwriting">L'immatriculation ✍️ (Stylo)</th>
-              <th>Actions ⚡</th>
+              <th>Personne</th>
+              <th>Date</th>
+              <th>Montant</th>
+              <th>Dept</th>
+              <th>Actions</th>
             </tr>
           </thead>
           <tbody id="recordsTableBody">
-            <!-- Rendered dynamically by app.js -->
+            <!-- Rempli dynamiquement -->
           </tbody>
         </table>
       </div>
-    </section>
-
-    <!-- Drag and Drop Dropzone -->
-    <section>
-      <div id="fileDropzone" class="dropzone">
-        <div class="dropzone-icon">📁</div>
-        <h3>Glissez-déposez ici la photo du bon de gasoil</h3>
-        <p style="color: var(--text-muted); font-size: 13px; margin-top: 4px;">ou cliquez pour parcourir vos fichiers (JPG, PNG, WebP)</p>
-        <input type="file" id="fileInput" accept="image/*" style="display: none;">
+      <div id="emptyState" class="empty-state" style="display: none;">
+        <div class="empty-icon">📋</div>
+        <p>Aucun bon enregistré</p>
       </div>
     </section>
 
   </main>
 
-  <!-- Department Manager Modal -->
-  <div id="deptModal" class="modal-overlay">
-    <div class="modal-container" style="max-width: 550px;">
+  <!-- Modal Camera -->
+  <div id="cameraModal" class="modal">
+    <div class="modal-overlay"></div>
+    <div class="modal-content modal-fullscreen">
       <div class="modal-header">
-        <h3 class="modal-title">⚙️ Gestion des Départements</h3>
-        <button id="btnCloseDeptModal" class="modal-close">&times;</button>
+        <h2>Prendre une Photo</h2>
+        <button id="btnCloseCameraModal" class="btn-close">&times;</button>
       </div>
-      <div class="modal-body" style="grid-template-columns: 1fr; gap: 20px;">
-        
-        <!-- Add New Dept Form -->
-        <form id="addDeptForm" style="display: flex; gap: 10px;">
-          <input type="text" id="inputNewDept" class="form-control" style="flex: 1;" placeholder="Nom du nouveau département..." required>
-          <button type="submit" class="btn btn-primary" style="padding: 10px 18px;">
-            ➕ Ajouter
-          </button>
-        </form>
-
-        <hr style="border: none; border-top: 1px solid var(--border-color);">
-
-        <!-- Active Departments List -->
-        <div>
-          <label style="font-size: 12px; font-weight: 600; color: var(--text-secondary); margin-bottom: 10px; display: block;">
-            Départements Actifs :
-          </label>
-          <div id="deptListContainer" class="dept-list">
-            <!-- Rendered dynamically -->
-          </div>
-        </div>
-
+      <div class="camera-container">
+        <video id="scannerVideo" class="camera-video" autoplay playsinline></video>
+        <div class="camera-frame"></div>
       </div>
+      <button id="btnCapturePhoto" class="btn-primary btn-lg">📸 Capturer</button>
     </div>
   </div>
 
-  <!-- Camera Live View Modal -->
-  <div id="cameraModal" class="modal-overlay">
-    <div class="modal-container" style="max-width: 600px;">
+  <!-- Modal Edit/Validation -->
+  <div id="editRecordModal" class="modal">
+    <div class="modal-overlay"></div>
+    <div class="modal-content">
       <div class="modal-header">
-        <h3 class="modal-title">📷 Prise de Photo du Bon de Gasoil</h3>
-        <button id="btnCloseCameraModal" class="modal-close">&times;</button>
-      </div>
-      <div class="modal-body" style="grid-template-columns: 1fr;">
-        <div class="scanner-view-container">
-          <video id="scannerVideo" class="scanner-video" autoplay playsinline></video>
-          <div class="scanner-overlay-frame"></div>
-          <div class="scanner-laser"></div>
-        </div>
-        <p style="text-align: center; color: var(--text-secondary); font-size: 13px;">
-          Cadrez le bon de gasoil au centre de la zone clignotante puis appuyez sur Capturer.
-        </p>
-      </div>
-      <div class="modal-footer">
-        <button id="btnCapturePhoto" class="btn btn-primary" style="width: 100%; justify-content: center;">
-          📸 Capturer & Extraction Automatique
-        </button>
-      </div>
-    </div>
-  </div>
-
-  <!-- Add/Edit & Review Pre-filled Form Modal -->
-  <div id="editRecordModal" class="modal-overlay">
-    <div class="modal-container">
-      <div class="modal-header">
-        <h3 id="editModalTitle" class="modal-title">✨ Validation du Bon Scanné</h3>
-        <button id="btnCloseEditModal" class="modal-close">&times;</button>
+        <h2 id="editModalTitle">Valider le Bon</h2>
+        <button id="btnCloseEditModal" class="btn-close">&times;</button>
       </div>
       <div class="modal-body">
+        <img id="editModalImagePreview" class="preview-image" src="" alt="Bon" style="display: none;">
         
-        <!-- Left: Image Preview -->
-        <div>
-          <label style="font-size: 12px; font-weight: 600; color: var(--text-secondary); margin-bottom: 8px; display: block;">
-            Image du Bon Scanné :
-          </label>
-          <div class="preview-image-box">
-            <img id="editModalImagePreview" src="" alt="Bon de Gasoil">
+        <form id="recordForm" class="form-simple">
+          <div class="form-group">
+            <label>Personne ✍️</label>
+            <input type="text" id="inputNomPrenom" class="form-input" required>
           </div>
-        </div>
-
-        <!-- Right: Pre-filled Form Fields -->
-        <form id="recordForm" class="form-grid">
           
-          <div class="form-group full-width">
-            <label for="inputNomPrenom">
-              <span>✍️ Nom et Prénom</span>
-              <span style="color: var(--accent-cyan); font-size: 10px;">(Écrit par stylo)</span>
-            </label>
-            <input type="text" id="inputNomPrenom" class="form-control" required placeholder="ex: Awass Tahiri">
-          </div>
-
           <div class="form-group">
-            <label for="inputDate">Date</label>
-            <input type="date" id="inputDate" class="form-control" required>
+            <label>Date</label>
+            <input type="date" id="inputDate" class="form-input" required>
           </div>
-
+          
           <div class="form-group">
-            <label for="inputMontant">Montant (MAD / DH)</label>
-            <input type="number" step="0.01" id="inputMontant" class="form-control" required placeholder="ex: 100.00">
+            <label>Montant (MAD)</label>
+            <input type="number" id="inputMontant" class="form-input" step="0.01" required>
           </div>
-
+          
           <div class="form-group">
-            <label for="inputDepartement">
-              <span>✍️ Département</span>
-              <span style="color: var(--accent-cyan); font-size: 10px;">(Écrit par stylo)</span>
-            </label>
-            <select id="inputDepartement" class="form-control">
-              <!-- Rendered dynamically -->
-            </select>
+            <label>Département ✍️</label>
+            <select id="inputDepartement" class="form-input" required></select>
           </div>
-
+          
           <div class="form-group">
-            <label for="inputKilometrage">
-              <span>✍️ Kilométrage</span>
-              <span style="color: var(--accent-cyan); font-size: 10px;">(Écrit par stylo)</span>
-            </label>
-            <input type="number" id="inputKilometrage" class="form-control" required placeholder="ex: 200000">
+            <label>Kilométrage ✍️</label>
+            <input type="number" id="inputKilometrage" class="form-input" required>
           </div>
-
-          <div class="form-group full-width">
-            <label for="inputImmatriculation">
-              <span>✍️ L'Immatriculation</span>
-              <span style="color: var(--accent-cyan); font-size: 10px;">(Écrit par stylo)</span>
-            </label>
-            <input type="text" id="inputImmatriculation" class="form-control" required placeholder="ex: 1234-B-26">
+          
+          <div class="form-group">
+            <label>Immatriculation ✍️</label>
+            <input type="text" id="inputImmatriculation" class="form-input" required>
           </div>
-
-          <div class="form-group full-width form-actions-row" style="margin-top: 10px;">
-            <button type="button" id="btnCancelEdit" class="btn btn-secondary" style="justify-content: center;">
-              Annuler
-            </button>
-            <button type="submit" class="btn btn-primary" style="flex: 1; justify-content: center;">
-              💾 Enregistrer dans le Tableau
-            </button>
+          
+          <div class="form-actions">
+            <button type="button" id="btnCancelEdit" class="btn-secondary">Annuler</button>
+            <button type="submit" class="btn-primary">Enregistrer</button>
           </div>
-
         </form>
-
       </div>
     </div>
   </div>
 
-  <!-- View Full Image Modal -->
-  <div id="viewImageModal" class="modal-overlay">
-    <div class="modal-container">
+  <!-- Modal Voir Image -->
+  <div id="viewImageModal" class="modal">
+    <div class="modal-overlay"></div>
+    <div class="modal-content">
       <div class="modal-header">
-        <h3 class="modal-title">🔍 Aperçu du Bon de Gasoil</h3>
-        <button id="btnCloseViewModal" class="modal-close">&times;</button>
+        <h2>Bon Scanné</h2>
+        <button id="btnCloseViewModal" class="btn-close">&times;</button>
       </div>
-      <div class="modal-body">
-        <div class="preview-image-box">
-          <img id="viewModalImage" src="" alt="Bon de Gasoil Zoom">
-        </div>
-        <div id="viewModalDetails" style="display: flex; flex-direction: column; gap: 12px; font-size: 14px; background: rgba(10, 14, 23, 0.6); padding: 18px; border-radius: 12px;">
-          <!-- Rendered dynamically -->
-        </div>
-      </div>
+      <img id="viewModalImage" class="preview-image" src="" alt="Bon">
     </div>
   </div>
 
-  <!-- Floating Scan Button (Mobile Only) -->
-  <button id="btnFabScanner" class="fab-scanner" aria-label="Scanner un bon de gasoil" onclick="document.getElementById('btnOpenScanner').click()">
-    📷
-  </button>
+  <!-- Bouton Flottant (Mobile) -->
+  <button id="btnFab" class="fab-button" onclick="document.getElementById('btnOpenScanner').click()" aria-label="Scanner">📷</button>
 
-  <!-- Toast Notification Container -->
+  <!-- Toast -->
   <div id="toastContainer" class="toast-container"></div>
 
-  <!-- Scripts -->
   <script src="sample_data.js"></script>
   <script src="app.js"></script>
 </body>
