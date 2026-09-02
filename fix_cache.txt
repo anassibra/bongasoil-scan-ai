@@ -1,0 +1,24 @@
+// Remplacer la fonction closeEditModal() COMPLÈTE par ceci :
+
+function closeEditModal() {
+  document.getElementById('editRecordModal').classList.remove('active');
+  
+  // Réinitialisation COMPLÈTE du state
+  state.currentEditingId = null;
+  state.tempScannedImage = null;
+  
+  // Vider tous les champs du formulaire
+  document.getElementById('inputNomPrenom').value = '';
+  document.getElementById('inputDate').value = '';
+  document.getElementById('inputMontant').value = '';
+  document.getElementById('inputKilometrage').value = '';
+  document.getElementById('inputImmatriculation').value = '';
+  
+  // Masquer l'aperçu d'image
+  const previewBox = document.getElementById('editModalImagePreview');
+  previewBox.src = '';
+  previewBox.style.display = 'none';
+  
+  // Réinitialiser le titre
+  document.getElementById('editModalTitle').textContent = '✨ Validation du Bon Scanné';
+}
