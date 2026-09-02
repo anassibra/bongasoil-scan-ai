@@ -1,0 +1,12 @@
+{
+  "name": "bongasoil-scan-ai",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Scanner Intelligent de Bons de Gasoil - BonGasoil Scan AI",
+  "scripts": {
+    "start": "serve -s . -l ${PORT:-3000}"
+  },
+  "dependencies": {
+    "serve": "^14.2.1"
+  }
+}
