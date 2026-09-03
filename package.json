@@ -4,9 +4,9 @@
   "private": true,
   "description": "Scanner Intelligent de Bons de Gasoil - BonGasoil Scan AI",
   "scripts": {
-    "start": "serve -s . -l ${PORT:-3000}"
+    "start": "node server.js"
   },
   "dependencies": {
-    "serve": "^14.2.1"
+    "express": "^4.19.2"
   }
 }

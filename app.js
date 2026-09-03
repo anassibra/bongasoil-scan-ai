@@ -256,69 +256,46 @@ function captureCameraPhoto() {
   runOCRExtraction(imageDataUrl);
 }
 
-// OCR - extraction auto du texte IMPRIMÉ (date, montant). Le manuscrit reste manuel.
-function loadTesseract() {
-  return new Promise((resolve, reject) => {
-    if (state.tesseractLoaded) return resolve();
-    const script = document.createElement('script');
-    script.src = 'https://cdn.jsdelivr.net/npm/tesseract.js@v4.1.8/dist/tesseract.min.js';
-    script.onload = () => { state.tesseractLoaded = true; resolve(); };
-    script.onerror = reject;
-    document.head.appendChild(script);
-  });
-}
-
+// EXTRACTION AUTOMATIQUE via IA Vision (Claude) - lit aussi l'écriture manuscrite
 async function runOCRExtraction(imageDataUrl) {
   state.tempScannedImage = imageDataUrl;
-  showToast("🧠 Détection de la date et du montant...", "info");
-
-  let extracted = { date: '', montant: 0 };
+  showToast("🧠 Lecture intelligente du bon en cours...", "info");
 
   try {
-    await loadTesseract();
-    const { createWorker } = window.Tesseract;
-    const worker = await createWorker('fra');
-    const result = await worker.recognize(imageDataUrl);
-    await worker.terminate();
-    extracted = parseOCRText(result.data.text);
-    showToast("✅ Date/montant détectés. Complétez le reste.", "success");
+    const [header, base64Data] = imageDataUrl.split(',');
+    const mediaType = header.match(/data:(.*?);/)[1];
+
+    const response = await fetch('/api/extract', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ imageBase64: base64Data, mediaType })
+    });
+
+    const extracted = await response.json();
+
+    if (!response.ok) {
+      throw new Error(extracted.error || 'Erreur extraction');
+    }
+
+    openEditModalWithData({
+      id: "BON-" + Date.now().toString().slice(-6),
+      nomPrenom: extracted.nomPrenom || '',
+      date: extracted.date || '',
+      montant: extracted.montant || '',
+      kilometrage: extracted.kilometrage || '',
+      immatriculation: extracted.immatriculation || '',
+      image: imageDataUrl
+    });
+
+    showToast("✅ Bon lu automatiquement ! Vérifiez avant d'enregistrer.", "success");
   } catch (error) {
-    console.error("OCR error:", error);
-    showToast("⚠️ Détection auto indisponible, remplissez manuellement.", "warning");
+    console.error("Erreur extraction:", error);
+    showToast("⚠️ Extraction échouée, remplissez manuellement.", "warning");
+    openEditModalWithData({
+      id: "BON-" + Date.now().toString().slice(-6),
+      image: imageDataUrl
+    });
   }
-
-  openEditModalWithData({
-    id: "BON-" + Date.now().toString().slice(-6),
-    date: extracted.date,
-    montant: extracted.montant,
-    image: imageDataUrl
-  });
-}
-
-function parseOCRText(text) {
-  const data = { date: '', montant: 0 };
-  const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
-
-  // Date format JJ/MM/AAAA
-  const dateMatch = text.match(/(\d{2})\/(\d{2})\/(\d{4})/);
-  if (dateMatch) {
-    data.date = `${dateMatch[3]}-${dateMatch[2]}-${dateMatch[1]}`;
-  }
-
-  // Montant : chercher près du mot MONTANT
-  const montantLineIndex = lines.findIndex(l => /montant/i.test(l));
-  if (montantLineIndex >= 0) {
-    const searchZone = lines.slice(montantLineIndex, montantLineIndex + 2).join(' ');
-    const amountMatch = searchZone.match(/(\d+[.,]\d{2})/);
-    if (amountMatch) data.montant = parseFloat(amountMatch[1].replace(',', '.'));
-  }
-  if (!data.montant) {
-    // fallback: chercher un nombre suivi de MAD/DH
-    const fallback = text.match(/(\d+[.,]\d{2})\s*(MAD|DH)/i);
-    if (fallback) data.montant = parseFloat(fallback[1].replace(',', '.'));
-  }
-
-  return data;
 }
 
 // EDIT MODAL
