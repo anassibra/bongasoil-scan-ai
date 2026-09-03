@@ -247,32 +247,11 @@ function captureCameraPhoto() {
   const video = document.getElementById("scannerVideo");
   if (!video.videoWidth) return;
 
-  const vw = video.videoWidth;
-  const vh = video.videoHeight;
-
-  const containerRect = document.querySelector(".camera-container").getBoundingClientRect();
-  const frameRect = document.querySelector(".camera-frame").getBoundingClientRect();
-
-  // Le video utilise object-fit: cover -> calcul correct de l'echelle et des offsets
-  const scale = Math.max(containerRect.width / vw, containerRect.height / vh);
-  const displayedW = vw * scale;
-  const displayedH = vh * scale;
-  const offsetX = (displayedW - containerRect.width) / 2;
-  const offsetY = (displayedH - containerRect.height) / 2;
-
-  const frameLeftInContainer = frameRect.left - containerRect.left;
-  const frameTopInContainer = frameRect.top - containerRect.top;
-
-  const cropX = (frameLeftInContainer + offsetX) / scale;
-  const cropY = (frameTopInContainer + offsetY) / scale;
-  const cropW = frameRect.width / scale;
-  const cropH = frameRect.height / scale;
-
   const canvas = document.createElement("canvas");
-  canvas.width = cropW;
-  canvas.height = cropH;
+  canvas.width = video.videoWidth;
+  canvas.height = video.videoHeight;
   const ctx = canvas.getContext("2d");
-  ctx.drawImage(video, cropX, cropY, cropW, cropH, 0, 0, cropW, cropH);
+  ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
   const imageDataUrl = canvas.toDataURL("image/jpeg", 0.92);
   closeCameraModal();
