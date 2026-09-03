@@ -1,4 +1,3 @@
-// State
 let state = {
   records: [],
   departments: [],
@@ -7,7 +6,9 @@ let state = {
   filterPerson: 'ALL',
   cameraStream: null,
   currentEditingId: null,
-  tempScannedImage: null
+  tempScannedImage: null,
+  countdownTimer: null,
+  tesseractLoaded: false
 };
 
 const DEFAULT_DEPARTMENTS = ['Régie (REGIS)', 'Logistique', 'Commercial', 'Maintenance', 'Direction', 'Service Technique', 'RH'];
@@ -36,11 +37,6 @@ function saveRecords() {
 function loadDepartments() {
   const saved = localStorage.getItem('bon_gasoil_departments');
   state.departments = saved ? JSON.parse(saved) : [...DEFAULT_DEPARTMENTS];
-}
-
-function saveDepartments() {
-  localStorage.setItem('bon_gasoil_departments', JSON.stringify(state.departments));
-  updateAllFilterDropdowns();
 }
 
 function updateAllFilterDropdowns() {
@@ -111,13 +107,11 @@ function renderTable() {
   const tbody = document.getElementById('recordsTableBody');
   tbody.innerHTML = '';
   const filtered = getFilteredRecords();
-  
   if (filtered.length === 0) {
     document.getElementById('emptyState').style.display = 'block';
     return;
   }
   document.getElementById('emptyState').style.display = 'none';
-  
   filtered.forEach(record => {
     const tr = document.createElement('tr');
     tr.innerHTML = `
@@ -173,7 +167,24 @@ function setupEventListeners() {
 
   document.getElementById('btnOpenScanner').addEventListener('click', openCameraModal);
   document.getElementById('btnCloseCameraModal').addEventListener('click', closeCameraModal);
-  document.getElementById('btnCapturePhoto').addEventListener('click', captureCameraPhoto);
+  document.getElementById('btnCapturePhoto').addEventListener('click', () => {
+    cancelCountdown();
+    captureCameraPhoto();
+  });
+  document.getElementById('btnUploadPhoto').addEventListener('click', () => {
+    document.getElementById('fileInputCamera').click();
+  });
+  document.getElementById('fileInputCamera').addEventListener('change', (e) => {
+    if (e.target.files && e.target.files[0]) {
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        closeCameraModal();
+        runOCRExtraction(ev.target.result);
+      };
+      reader.readAsDataURL(e.target.files[0]);
+    }
+  });
+
   document.getElementById('btnExportExcel').addEventListener('click', exportToExcelXML);
   document.getElementById('recordForm').addEventListener('submit', saveRecordForm);
   document.getElementById('btnCloseEditModal').addEventListener('click', closeEditModal);
@@ -183,20 +194,48 @@ function setupEventListeners() {
   });
 }
 
+// CAMERA
 async function openCameraModal() {
   document.getElementById('cameraModal').classList.add('active');
   const video = document.getElementById('scannerVideo');
   try {
     state.cameraStream = await navigator.mediaDevices.getUserMedia({
-      video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } }
+      video: { facingMode: 'environment', width: { ideal: 1920 }, height: { ideal: 1080 } }
     });
     video.srcObject = state.cameraStream;
+    video.onloadedmetadata = () => startAutoCaptureCountdown();
   } catch (err) {
-    showToast("Erreur caméra.", "warning");
+    showToast("Impossible d'accéder à la caméra.", "warning");
   }
 }
 
+function startAutoCaptureCountdown() {
+  let count = 3;
+  const el = document.getElementById('captureCountdown');
+  el.style.display = 'flex';
+  el.textContent = count;
+
+  state.countdownTimer = setInterval(() => {
+    count--;
+    if (count <= 0) {
+      cancelCountdown();
+      captureCameraPhoto();
+    } else {
+      el.textContent = count;
+    }
+  }, 1000);
+}
+
+function cancelCountdown() {
+  if (state.countdownTimer) {
+    clearInterval(state.countdownTimer);
+    state.countdownTimer = null;
+  }
+  document.getElementById('captureCountdown').style.display = 'none';
+}
+
 function closeCameraModal() {
+  cancelCountdown();
   document.getElementById('cameraModal').classList.remove('active');
   if (state.cameraStream) {
     state.cameraStream.getTracks().forEach(track => track.stop());
@@ -206,22 +245,83 @@ function closeCameraModal() {
 
 function captureCameraPhoto() {
   const video = document.getElementById('scannerVideo');
+  if (!video.videoWidth) return;
   const canvas = document.createElement('canvas');
-  canvas.width = video.videoWidth || 1280;
-  canvas.height = video.videoHeight || 720;
+  canvas.width = video.videoWidth;
+  canvas.height = video.videoHeight;
   const ctx = canvas.getContext('2d');
   ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-  const imageDataUrl = canvas.toDataURL('image/jpeg', 0.9);
+  const imageDataUrl = canvas.toDataURL('image/jpeg', 0.92);
   closeCameraModal();
-  showToast("📷 Photo capturée. Remplissez les infos.", "success");
-  
-  // Ouvrir le modal avec la photo - l'utilisateur remplit manuellement
+  runOCRExtraction(imageDataUrl);
+}
+
+// OCR - extraction auto du texte IMPRIMÉ (date, montant). Le manuscrit reste manuel.
+function loadTesseract() {
+  return new Promise((resolve, reject) => {
+    if (state.tesseractLoaded) return resolve();
+    const script = document.createElement('script');
+    script.src = 'https://cdn.jsdelivr.net/npm/tesseract.js@v4.1.8/dist/tesseract.min.js';
+    script.onload = () => { state.tesseractLoaded = true; resolve(); };
+    script.onerror = reject;
+    document.head.appendChild(script);
+  });
+}
+
+async function runOCRExtraction(imageDataUrl) {
+  state.tempScannedImage = imageDataUrl;
+  showToast("🧠 Détection de la date et du montant...", "info");
+
+  let extracted = { date: '', montant: 0 };
+
+  try {
+    await loadTesseract();
+    const { createWorker } = window.Tesseract;
+    const worker = await createWorker('fra');
+    const result = await worker.recognize(imageDataUrl);
+    await worker.terminate();
+    extracted = parseOCRText(result.data.text);
+    showToast("✅ Date/montant détectés. Complétez le reste.", "success");
+  } catch (error) {
+    console.error("OCR error:", error);
+    showToast("⚠️ Détection auto indisponible, remplissez manuellement.", "warning");
+  }
+
   openEditModalWithData({
     id: "BON-" + Date.now().toString().slice(-6),
+    date: extracted.date,
+    montant: extracted.montant,
     image: imageDataUrl
   });
 }
 
+function parseOCRText(text) {
+  const data = { date: '', montant: 0 };
+  const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
+
+  // Date format JJ/MM/AAAA
+  const dateMatch = text.match(/(\d{2})\/(\d{2})\/(\d{4})/);
+  if (dateMatch) {
+    data.date = `${dateMatch[3]}-${dateMatch[2]}-${dateMatch[1]}`;
+  }
+
+  // Montant : chercher près du mot MONTANT
+  const montantLineIndex = lines.findIndex(l => /montant/i.test(l));
+  if (montantLineIndex >= 0) {
+    const searchZone = lines.slice(montantLineIndex, montantLineIndex + 2).join(' ');
+    const amountMatch = searchZone.match(/(\d+[.,]\d{2})/);
+    if (amountMatch) data.montant = parseFloat(amountMatch[1].replace(',', '.'));
+  }
+  if (!data.montant) {
+    // fallback: chercher un nombre suivi de MAD/DH
+    const fallback = text.match(/(\d+[.,]\d{2})\s*(MAD|DH)/i);
+    if (fallback) data.montant = parseFloat(fallback[1].replace(',', '.'));
+  }
+
+  return data;
+}
+
+// EDIT MODAL
 function openEditModalWithData(data) {
   state.currentEditingId = data.id || null;
   state.tempScannedImage = data.image || null;
@@ -272,15 +372,9 @@ function saveRecordForm(e) {
   }
 
   const existingIndex = state.records.findIndex(r => r.id === state.currentEditingId);
-  
   const recordObj = {
     id: state.currentEditingId || ("BON-" + Date.now().toString().slice(-6)),
-    nomPrenom,
-    date,
-    montant,
-    departement,
-    kilometrage,
-    immatriculation,
+    nomPrenom, date, montant, departement, kilometrage, immatriculation,
     image: state.tempScannedImage
   };
 
@@ -321,54 +415,20 @@ function exportToExcelXML() {
     showToast("Aucune donnée.", "warning");
     return;
   }
-
   const totalAmount = filtered.reduce((sum, r) => sum + (parseFloat(r.montant) || 0), 0);
   let html = `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
-    <head>
-      <meta charset="utf-8">
-      <style>
-        table { border-collapse: collapse; width: 100%; font-family: Arial, sans-serif; font-size: 11pt; }
-        th { background-color: #1f2937; color: #fff; font-weight: bold; border: 1px solid #475569; padding: 10px; }
-        td { border: 1px solid #cbd5e1; padding: 8px; }
-        .num { text-align: right; }
-      </style>
-    </head>
-    <body>
-      <div style="font-size: 16pt; font-weight: bold; margin-bottom: 10px;">Rapport Bons de Gasoil</div>
-      <table>
-        <thead>
-          <tr>
-            <th>Personne</th>
-            <th>Date</th>
-            <th>Montant (MAD)</th>
-            <th>Département</th>
-            <th>Kilométrage</th>
-            <th>Immatriculation</th>
-          </tr>
-        </thead>
-        <tbody>`;
-
+    <head><meta charset="utf-8"><style>
+      table { border-collapse: collapse; width: 100%; font-family: Arial; font-size: 11pt; }
+      th { background-color: #1f2937; color: #fff; font-weight: bold; border: 1px solid #475569; padding: 10px; }
+      td { border: 1px solid #cbd5e1; padding: 8px; }
+      .num { text-align: right; }
+    </style></head><body>
+      <div style="font-size:16pt;font-weight:bold;margin-bottom:10px;">Rapport Bons de Gasoil</div>
+      <table><thead><tr><th>Personne</th><th>Date</th><th>Montant (MAD)</th><th>Département</th><th>Kilométrage</th><th>Immatriculation</th></tr></thead><tbody>`;
   filtered.forEach(r => {
-    html += `<tr>
-      <td><b>${escapeHtml(r.nomPrenom)}</b></td>
-      <td>${r.date}</td>
-      <td class="num">${parseFloat(r.montant).toFixed(2)}</td>
-      <td>${escapeHtml(r.departement)}</td>
-      <td class="num">${parseInt(r.kilometrage).toLocaleString('fr-FR')}</td>
-      <td><b>${escapeHtml(r.immatriculation)}</b></td>
-    </tr>`;
+    html += `<tr><td><b>${escapeHtml(r.nomPrenom)}</b></td><td>${r.date}</td><td class="num">${parseFloat(r.montant).toFixed(2)}</td><td>${escapeHtml(r.departement)}</td><td class="num">${parseInt(r.kilometrage).toLocaleString('fr-FR')}</td><td><b>${escapeHtml(r.immatriculation)}</b></td></tr>`;
   });
-
-  html += `<tr style="background-color: #f1f5f9; font-weight: bold;">
-      <td colspan="2" style="text-align: right;">TOTAL :</td>
-      <td class="num" style="color: #059669;"><b>${totalAmount.toFixed(2)}</b></td>
-      <td colspan="3"></td>
-    </tr>
-      </tbody>
-      </table>
-    </body>
-    </html>`;
-
+  html += `<tr style="background-color:#f1f5f9;font-weight:bold;"><td colspan="2" style="text-align:right;">TOTAL :</td><td class="num" style="color:#059669;"><b>${totalAmount.toFixed(2)}</b></td><td colspan="3"></td></tr></tbody></table></body></html>`;
   const blob = new Blob([html], { type: "application/vnd.ms-excel;charset=utf-8" });
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");

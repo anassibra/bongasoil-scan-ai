@@ -1,5 +1,5 @@
 // IMPORTANT: Changez ce numéro à CHAQUE déploiement pour forcer la mise à jour du cache
-const CACHE_VERSION = 'v2';
+const CACHE_VERSION = 'v3';
 const CACHE_NAME = `bongasoil-cache-${CACHE_VERSION}`;
 
 const STATIC_ASSETS = [

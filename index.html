@@ -15,7 +15,6 @@
 </head>
 <body>
 
-  <!-- Header Simplifié -->
   <header class="app-header">
     <div class="header-content">
       <h1 class="app-title">⛽ BonGasoil Scan</h1>
@@ -34,13 +33,11 @@
 
   <main class="app-main">
 
-    <!-- Section Actions Principales -->
     <section class="action-section">
       <button id="btnOpenScanner" class="btn-primary btn-lg">📷 Scanner un Bon</button>
       <button id="btnExportExcel" class="btn-secondary btn-lg">📊 Exporter Excel</button>
     </section>
 
-    <!-- Filtres Simples -->
     <section class="filters-section">
       <div class="filter-row">
         <input type="text" id="searchInput" class="filter-input" placeholder="🔍 Rechercher...">
@@ -56,7 +53,6 @@
       <button id="btnResetFilters" class="btn-reset">🔄 Réinitialiser</button>
     </section>
 
-    <!-- Tableau Principal Simplifié -->
     <section class="table-section">
       <div class="table-container">
         <table class="simple-table">
@@ -69,9 +65,7 @@
               <th>Actions</th>
             </tr>
           </thead>
-          <tbody id="recordsTableBody">
-            <!-- Rempli dynamiquement -->
-          </tbody>
+          <tbody id="recordsTableBody"></tbody>
         </table>
       </div>
       <div id="emptyState" class="empty-state" style="display: none;">
@@ -82,19 +76,29 @@
 
   </main>
 
-  <!-- Modal Camera -->
+  <!-- Modal Camera (redesigné) -->
   <div id="cameraModal" class="modal">
     <div class="modal-overlay"></div>
     <div class="modal-content modal-fullscreen">
-      <div class="modal-header">
-        <h2>Prendre une Photo</h2>
-        <button id="btnCloseCameraModal" class="btn-close">&times;</button>
+      <div class="camera-topbar">
+        <button id="btnCloseCameraModal" class="btn-close-camera">&times;</button>
+        <span class="camera-title">Scanner un Bon</span>
+        <span style="width:36px;"></span>
       </div>
       <div class="camera-container">
-        <video id="scannerVideo" class="camera-video" autoplay playsinline></video>
+        <video id="scannerVideo" class="camera-video" autoplay playsinline muted></video>
         <div class="camera-frame"></div>
+        <div id="captureCountdown" class="capture-countdown"></div>
       </div>
-      <button id="btnCapturePhoto" class="btn-primary btn-lg">📸 Capturer</button>
+      <div class="camera-bottombar">
+        <button id="btnUploadPhoto" class="btn-upload-photo">
+          <span class="upload-icon">📁</span>
+          <span>Importer</span>
+        </button>
+        <button id="btnCapturePhoto" class="btn-capture-main" aria-label="Capturer"></button>
+        <div style="width:64px;"></div>
+      </div>
+      <input type="file" id="fileInputCamera" accept="image/*" style="display:none;">
     </div>
   </div>
 
@@ -111,32 +115,32 @@
         
         <form id="recordForm" class="form-simple">
           <div class="form-group">
-            <label>Personne ✍️</label>
+            <label>Personne ✍️ <span class="manual-tag">à remplir</span></label>
             <input type="text" id="inputNomPrenom" class="form-input" required>
           </div>
           
           <div class="form-group">
-            <label>Date</label>
+            <label>Date <span class="auto-tag">détection auto</span></label>
             <input type="date" id="inputDate" class="form-input" required>
           </div>
           
           <div class="form-group">
-            <label>Montant (MAD)</label>
+            <label>Montant (MAD) <span class="auto-tag">détection auto</span></label>
             <input type="number" id="inputMontant" class="form-input" step="0.01" required>
           </div>
           
           <div class="form-group">
-            <label>Département ✍️</label>
+            <label>Département ✍️ <span class="manual-tag">à remplir</span></label>
             <select id="inputDepartement" class="form-input" required></select>
           </div>
           
           <div class="form-group">
-            <label>Kilométrage ✍️</label>
+            <label>Kilométrage ✍️ <span class="manual-tag">à remplir</span></label>
             <input type="number" id="inputKilometrage" class="form-input" required>
           </div>
           
           <div class="form-group">
-            <label>Immatriculation ✍️</label>
+            <label>Immatriculation ✍️ <span class="manual-tag">à remplir</span></label>
             <input type="text" id="inputImmatriculation" class="form-input" required>
           </div>
           
@@ -161,15 +165,12 @@
     </div>
   </div>
 
-  <!-- Bouton Flottant (Mobile) -->
   <button id="btnFab" class="fab-button" onclick="document.getElementById('btnOpenScanner').click()" aria-label="Scanner">📷</button>
 
-  <!-- Toast -->
   <div id="toastContainer" class="toast-container"></div>
 
   <script src="sample_data.js"></script>
   <script src="app.js"></script>
-
   <script>
     if ("serviceWorker" in navigator) {
       window.addEventListener("load", () => {
