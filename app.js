@@ -4,6 +4,7 @@ let state = {
   searchQuery: '',
   filterDept: 'ALL',
   filterPerson: 'ALL',
+  filterPlate: 'ALL',
   cameraStream: null,
   currentEditingId: null,
   tempScannedImage: null,
@@ -42,7 +43,21 @@ function loadDepartments() {
 function updateAllFilterDropdowns() {
   updateDepartmentFilterDropdown();
   updatePersonFilterDropdown();
+  updatePlateFilterDropdown();
   updateFormDepartmentDropdown();
+}
+
+function updatePlateFilterDropdown() {
+  const select = document.getElementById('filterPlateSelect');
+  if (!select) return;
+  const plates = Array.from(new Set(state.records.map(r => r.immatriculation).filter(Boolean))).sort();
+  select.innerHTML = '<option value="ALL">Toutes les immatriculations</option>';
+  plates.forEach(plate => {
+    const opt = document.createElement('option');
+    opt.value = plate;
+    opt.textContent = plate;
+    select.appendChild(opt);
+  });
 }
 
 function updateDepartmentFilterDropdown() {
@@ -92,6 +107,7 @@ function getFilteredRecords() {
     }
     if (state.filterDept !== 'ALL' && r.departement !== state.filterDept) return false;
     if (state.filterPerson !== 'ALL' && r.nomPrenom !== state.filterPerson) return false;
+    if (state.filterPlate !== 'ALL' && r.immatriculation !== state.filterPlate) return false;
     return true;
   });
 }
@@ -119,6 +135,7 @@ function renderTable() {
       <td>${record.date}</td>
       <td><strong>${parseFloat(record.montant).toFixed(2)} DH</strong></td>
       <td>${escapeHtml(record.departement)}</td>
+      <td>${escapeHtml(record.immatriculation || '-')}</td>
       <td>
         <div class="table-actions">
           <button class="action-btn" onclick="viewVoucherImage('${record.id}')">👁️</button>
@@ -154,10 +171,17 @@ function setupEventListeners() {
     renderTable();
   });
 
+  document.getElementById('filterPlateSelect').addEventListener('change', (e) => {
+    state.filterPlate = e.target.value;
+    renderStats();
+    renderTable();
+  });
+
   document.getElementById('btnResetFilters').addEventListener('click', () => {
     state.searchQuery = '';
     state.filterDept = 'ALL';
     state.filterPerson = 'ALL';
+    state.filterPlate = 'ALL';
     document.getElementById('searchInput').value = '';
     updateAllFilterDropdowns();
     renderStats();
