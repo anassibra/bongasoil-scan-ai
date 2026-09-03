@@ -382,3 +382,25 @@ cat > package.json << 'EOF'
   },
   "dependencies": {}
 }
+
+/* CAMERA MODAL - REDESIGN v2 : centré, pro, cadre adapté aux tickets */
+@media (min-width: 600px) {
+  .modal-fullscreen .modal-content {
+    max-width: 480px;
+    margin: auto;
+    height: 90vh;
+    border-radius: 20px;
+    overflow: hidden;
+  }
+  .modal-fullscreen {
+    align-items: center;
+    justify-content: center;
+    display: flex;
+  }
+}
+
+.camera-frame {
+  width: 68% !important;
+  height: 72% !important;
+  border-radius: 20px !important;
+}
