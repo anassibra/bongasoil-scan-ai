@@ -350,8 +350,8 @@ html, body {
 }
 .camera-frame {
   position: absolute;
-  width: 62%;
-  height: 70%;
+  width: 72%;
+  height: 82%;
   border: 3px solid var(--primary);
   border-radius: 16px;
   box-shadow: 0 0 0 2000px rgba(0,0,0,0.55);

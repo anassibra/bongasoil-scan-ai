@@ -253,13 +253,20 @@ function captureCameraPhoto() {
   const containerRect = document.querySelector(".camera-container").getBoundingClientRect();
   const frameRect = document.querySelector(".camera-frame").getBoundingClientRect();
 
-  const scaleX = vw / containerRect.width;
-  const scaleY = vh / containerRect.height;
+  // Le video utilise object-fit: cover -> calcul correct de l'echelle et des offsets
+  const scale = Math.max(containerRect.width / vw, containerRect.height / vh);
+  const displayedW = vw * scale;
+  const displayedH = vh * scale;
+  const offsetX = (displayedW - containerRect.width) / 2;
+  const offsetY = (displayedH - containerRect.height) / 2;
 
-  const cropX = (frameRect.left - containerRect.left) * scaleX;
-  const cropY = (frameRect.top - containerRect.top) * scaleY;
-  const cropW = frameRect.width * scaleX;
-  const cropH = frameRect.height * scaleY;
+  const frameLeftInContainer = frameRect.left - containerRect.left;
+  const frameTopInContainer = frameRect.top - containerRect.top;
+
+  const cropX = (frameLeftInContainer + offsetX) / scale;
+  const cropY = (frameTopInContainer + offsetY) / scale;
+  const cropW = frameRect.width / scale;
+  const cropH = frameRect.height / scale;
 
   const canvas = document.createElement("canvas");
   canvas.width = cropW;
