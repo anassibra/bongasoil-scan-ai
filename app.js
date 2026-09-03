@@ -244,17 +244,33 @@ function closeCameraModal() {
 }
 
 function captureCameraPhoto() {
-  const video = document.getElementById('scannerVideo');
+  const video = document.getElementById("scannerVideo");
   if (!video.videoWidth) return;
-  const canvas = document.createElement('canvas');
-  canvas.width = video.videoWidth;
-  canvas.height = video.videoHeight;
-  const ctx = canvas.getContext('2d');
-  ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-  const imageDataUrl = canvas.toDataURL('image/jpeg', 0.92);
+
+  const vw = video.videoWidth;
+  const vh = video.videoHeight;
+
+  const containerRect = document.querySelector(".camera-container").getBoundingClientRect();
+  const frameRect = document.querySelector(".camera-frame").getBoundingClientRect();
+
+  const scaleX = vw / containerRect.width;
+  const scaleY = vh / containerRect.height;
+
+  const cropX = (frameRect.left - containerRect.left) * scaleX;
+  const cropY = (frameRect.top - containerRect.top) * scaleY;
+  const cropW = frameRect.width * scaleX;
+  const cropH = frameRect.height * scaleY;
+
+  const canvas = document.createElement("canvas");
+  canvas.width = cropW;
+  canvas.height = cropH;
+  const ctx = canvas.getContext("2d");
+  ctx.drawImage(video, cropX, cropY, cropW, cropH, 0, 0, cropW, cropH);
+
+  const imageDataUrl = canvas.toDataURL("image/jpeg", 0.92);
   closeCameraModal();
   runOCRExtraction(imageDataUrl);
-}
+}}
 
 // EXTRACTION AUTOMATIQUE via IA Vision (Claude) - lit aussi l'écriture manuscrite
 async function runOCRExtraction(imageDataUrl) {
@@ -272,18 +288,21 @@ async function runOCRExtraction(imageDataUrl) {
     });
 
     const extracted = await response.json();
-
-    if (!response.ok) {
-      throw new Error(extracted.error || 'Erreur extraction');
+    if (extracted.departement && extracted.departement.trim()) {
+      const deptName = extracted.departement.trim();
+      if (!state.departments.some(d => d.toLowerCase() === deptName.toLowerCase())) {
+        state.departments.push(deptName);
+        saveDepartments();
+      }
     }
-
     openEditModalWithData({
       id: "BON-" + Date.now().toString().slice(-6),
-      nomPrenom: extracted.nomPrenom || '',
-      date: extracted.date || '',
-      montant: extracted.montant || '',
-      kilometrage: extracted.kilometrage || '',
-      immatriculation: extracted.immatriculation || '',
+      nomPrenom: extracted.nomPrenom || "",
+      date: extracted.date || "",
+      montant: extracted.montant || "",
+      departement: extracted.departement || "",
+      kilometrage: extracted.kilometrage || "",
+      immatriculation: extracted.immatriculation || "",
       image: imageDataUrl
     });
 
@@ -309,6 +328,11 @@ function openEditModalWithData(data) {
   document.getElementById('inputKilometrage').value = data.kilometrage || '';
   document.getElementById('inputImmatriculation').value = data.immatriculation || '';
 
+  const deptSelect = document.getElementById('inputDepartement');
+  if (data.departement) {
+    updateFormDepartmentDropdown();
+    deptSelect.value = data.departement;
+  }
   const previewBox = document.getElementById('editModalImagePreview');
   if (data.image) {
     previewBox.src = data.image;

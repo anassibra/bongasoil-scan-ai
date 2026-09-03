@@ -309,33 +309,104 @@ html, body {
   overflow-y: auto;
 }
 
-/* CAMERA */
+/* CAMERA - design plein ecran pro */
+.camera-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px;
+  background: #000;
+  flex-shrink: 0;
+}
+.camera-title {
+  color: #fff;
+  font-weight: 600;
+  font-size: 15px;
+}
+.btn-close-camera {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.15);
+  border: none;
+  color: #fff;
+  font-size: 22px;
+  cursor: pointer;
+}
 .camera-container {
   position: relative;
-  width: 100%;
-  aspect-ratio: 16/9;
+  flex: 1;
   background: #000;
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-bottom: 16px;
+  overflow: hidden;
+  min-height: 0;
 }
-
 .camera-video {
   width: 100%;
   height: 100%;
   object-fit: cover;
 }
-
 .camera-frame {
   position: absolute;
-  width: 80%;
-  height: 60%;
+  width: 62%;
+  height: 70%;
   border: 3px solid var(--primary);
-  border-radius: 12px;
-  box-shadow: inset 0 0 20px rgba(37, 99, 235, 0.3);
+  border-radius: 16px;
+  box-shadow: 0 0 0 2000px rgba(0,0,0,0.55);
+  pointer-events: none;
 }
-
+.capture-countdown {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  background: rgba(0,0,0,0.6);
+  color: #fff;
+  font-size: 22px;
+  font-weight: 700;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 5;
+}
+.camera-bottombar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 24px 32px;
+  background: #000;
+  flex-shrink: 0;
+}
+.btn-upload-photo {
+  background: none;
+  border: none;
+  color: #fff;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  cursor: pointer;
+  width: 64px;
+}
+.upload-icon {
+  font-size: 24px;
+}
+.btn-capture-main {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  background: #fff;
+  border: 4px solid rgba(255,255,255,0.4);
+  cursor: pointer;
+}
+.btn-capture-main:active {
+  background: #ddd;
+}
 /* IMAGES */
 .preview-image {
   width: 100%;
@@ -398,9 +469,17 @@ cat > package.json << 'EOF'
     display: flex;
   }
 }
-
-.camera-frame {
-  width: 68% !important;
-  height: 72% !important;
   border-radius: 20px !important;
+}
+
+/* FIX iOS : forcer texte blanc sur tous les champs (bug natif Safari) */
+input.form-input,
+select.form-input,
+.filter-input,
+.filter-select {
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff !important;
+  color-scheme: dark;
+  -webkit-appearance: none;
+  appearance: none;
 }
