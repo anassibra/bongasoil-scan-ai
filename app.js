@@ -270,7 +270,7 @@ function captureCameraPhoto() {
   const imageDataUrl = canvas.toDataURL("image/jpeg", 0.92);
   closeCameraModal();
   runOCRExtraction(imageDataUrl);
-}}
+}
 
 // EXTRACTION AUTOMATIQUE via IA Vision (Claude) - lit aussi l'écriture manuscrite
 async function runOCRExtraction(imageDataUrl) {
