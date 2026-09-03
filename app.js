@@ -14,8 +14,8 @@ let state = {
 
 const DEFAULT_DEPARTMENTS = ['Régie (REGIS)', 'Logistique', 'Commercial', 'Maintenance', 'Direction', 'Service Technique', 'RH'];
 
-document.addEventListener('DOMContentLoaded', () => {
-  loadRecords();
+document.addEventListener('DOMContentLoaded', async () => {
+  await loadRecords();
   loadDepartments();
   setupEventListeners();
   updateAllFilterDropdowns();
@@ -23,13 +23,68 @@ document.addEventListener('DOMContentLoaded', () => {
   renderTable();
 });
 
-function loadRecords() {
-  const saved = localStorage.getItem('bon_gasoil_records');
-  state.records = saved ? JSON.parse(saved) : [...SAMPLE_DATA];
+// STOCKAGE ILLIMITE (IndexedDB) - fonctionne 100% hors ligne, meme mecanisme site/PWA
+function openDB() {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open('bongasoil_db', 1);
+    req.onupgradeneeded = () => {
+      req.result.createObjectStore('kv');
+    };
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
 }
 
-function saveRecords() {
-  localStorage.setItem('bon_gasoil_records', JSON.stringify(state.records));
+async function idbGet(key) {
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction('kv', 'readonly');
+    const req = tx.objectStore('kv').get(key);
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+async function idbSet(key, value) {
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction('kv', 'readwrite');
+    tx.objectStore('kv').put(value, key);
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+}
+
+async function loadRecords() {
+  try {
+    const existing = await idbGet('records');
+    if (existing && Array.isArray(existing) && existing.length > 0) {
+      state.records = existing;
+      return;
+    }
+    // Migration depuis l'ancien localStorage (une seule fois)
+    const oldSaved = localStorage.getItem('bon_gasoil_records');
+    if (oldSaved) {
+      const parsed = JSON.parse(oldSaved);
+      state.records = Array.isArray(parsed) ? parsed : [...SAMPLE_DATA];
+      await idbSet('records', state.records);
+      localStorage.removeItem('bon_gasoil_records');
+    } else {
+      state.records = [...SAMPLE_DATA];
+    }
+  } catch (e) {
+    console.error('Erreur chargement IndexedDB:', e);
+    state.records = [...SAMPLE_DATA];
+  }
+}
+
+async function saveRecords() {
+  try {
+    await idbSet('records', state.records);
+  } catch (e) {
+    console.error('Erreur sauvegarde IndexedDB:', e);
+    showToast('⚠️ Erreur de sauvegarde (stockage plein ?)', 'warning');
+  }
   updateAllFilterDropdowns();
   renderStats();
   renderTable();
