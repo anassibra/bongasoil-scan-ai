@@ -35,6 +35,7 @@
 
     <section class="action-section">
       <button id="btnOpenScanner" class="btn-primary btn-lg">📷 Scanner un Bon</button>
+      <button id="btnImportSheet" class="btn-secondary btn-lg">📋 Importer Feuille (Plusieurs Bons)</button>
       <button id="btnExportExcel" class="btn-secondary btn-lg">📊 Exporter Excel</button>
     </section>
 
@@ -159,6 +160,25 @@
     </div>
   </div>
 
+  <!-- Modal Revision Multi-Bons -->
+  <div id="batchReviewModal" class="modal">
+    <div class="modal-overlay"></div>
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>Bons detectes sur la feuille</h2>
+        <button id="btnCloseBatchModal" class="btn-close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p id="batchStatusText" style="color: var(--text-muted); font-size: 13px; margin-bottom: 12px;"></p>
+        <div id="batchList"></div>
+        <div class="form-actions" style="margin-top: 16px;">
+          <button type="button" id="btnCancelBatch" class="btn-secondary">Annuler</button>
+          <button type="button" id="btnSaveBatch" class="btn-primary">Enregistrer tous les bons</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- Modal Voir Image -->
   <div id="viewImageModal" class="modal">
     <div class="modal-overlay"></div>
@@ -170,6 +190,8 @@
       <img id="viewModalImage" class="preview-image" src="" alt="Bon">
     </div>
   </div>
+
+  <input type="file" id="fileInputSheet" accept="image/*" style="display:none;">
 
   <button id="btnFab" class="fab-button" onclick="document.getElementById('btnOpenScanner').click()" aria-label="Scanner">📷</button>
 

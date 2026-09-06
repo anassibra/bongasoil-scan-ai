@@ -88,6 +88,87 @@ app.post('/api/extract', async (req, res) => {
   }
 });
 
+app.post('/api/extract-batch', async (req, res) => {
+  try {
+    const { imageBase64, mediaType } = req.body;
+    if (!imageBase64) return res.status(400).json({ error: 'imageBase64 manquant' });
+    if (!API_KEY) return res.status(500).json({ error: 'Cle API non configuree sur le serveur' });
+
+    const prompt = "Cette image montre une feuille (A4 ou autre) sur laquelle PLUSIEURS bons/tickets de gasoil marocains distincts sont colles ou poses cote a cote. Certaines infos sont imprimees, d'autres ecrites au stylo a la main.\n" +
+      "Identifie CHAQUE bon separement et extrais ses champs. Reponds UNIQUEMENT avec un tableau JSON valide, rien d'autre, pas de markdown :\n" +
+      "[\n" +
+      "  {\n" +
+      '    "nomPrenom": "nom et prenom ecrit au stylo",\n' +
+      '    "date": "date au format AAAA-MM-JJ (date IMPRIMEE)",\n' +
+      '    "montant": nombre decimal du montant total paye,\n' +
+      '    "departement": "mot ecrit au stylo identifiant un departement/projet/chantier, vide si absent",\n' +
+      '    "kilometrage": nombre entier du kilometrage ecrit au stylo,\n' +
+      '    "immatriculation": "immatriculation marocaine ecrite au stylo, FORMAT STRICT [chiffres][UNE lettre][chiffres] SANS tiret"\n' +
+      "  }\n" +
+      "]\n" +
+      "Un objet par bon detecte sur la feuille. Si un champ est illisible, mets une chaine vide (ou 0). Ne mets AUCUN texte avant ou apres le tableau JSON.";
+
+    const payload = JSON.stringify({
+      model: "claude-sonnet-4-6",
+      max_tokens: 3000,
+      messages: [{
+        role: "user",
+        content: [
+          { type: "image", source: { type: "base64", media_type: mediaType || "image/jpeg", data: imageBase64 } },
+          { type: "text", text: prompt }
+        ]
+      }]
+    });
+
+    const options = {
+      hostname: 'api.anthropic.com',
+      path: '/v1/messages',
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': API_KEY,
+        'anthropic-version': '2023-06-01',
+        'Content-Length': Buffer.byteLength(payload)
+      }
+    };
+
+    const apiReq = https.request(options, (apiRes) => {
+      let data = '';
+      apiRes.on('data', (chunk) => data += chunk);
+      apiRes.on('end', () => {
+        try {
+          const parsed = JSON.parse(data);
+          if (parsed.error) {
+            console.error('Erreur API Anthropic:', parsed.error);
+            return res.status(500).json({ error: parsed.error.message || 'Erreur API' });
+          }
+          const textBlock = parsed.content?.find(c => c.type === 'text');
+          if (!textBlock) return res.status(500).json({ error: 'Reponse IA invalide' });
+
+          const cleanText = textBlock.text.replace(/```json|```/g, '').trim();
+          const extracted = JSON.parse(cleanText);
+          res.json(Array.isArray(extracted) ? extracted : []);
+        } catch (e) {
+          console.error('Erreur parsing batch:', e, data);
+          res.status(500).json({ error: 'Erreur de lecture de la reponse IA' });
+        }
+      });
+    });
+
+    apiReq.on('error', (e) => {
+      console.error('Erreur requete:', e);
+      res.status(500).json({ error: 'Erreur de connexion a l API' });
+    });
+
+    apiReq.write(payload);
+    apiReq.end();
+
+  } catch (error) {
+    console.error('Erreur serveur batch:', error);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'index.html'));
 });

@@ -265,6 +265,21 @@ function setupEventListeners() {
   });
 
   document.getElementById('btnExportExcel').addEventListener('click', exportToExcelXML);
+
+  document.getElementById('btnImportSheet').addEventListener('click', () => {
+    document.getElementById('fileInputSheet').click();
+  });
+  document.getElementById('fileInputSheet').addEventListener('change', (e) => {
+    if (e.target.files && e.target.files[0]) {
+      const reader = new FileReader();
+      reader.onload = (ev) => runBatchExtraction(ev.target.result);
+      reader.readAsDataURL(e.target.files[0]);
+      e.target.value = '';
+    }
+  });
+  document.getElementById('btnCloseBatchModal').addEventListener('click', closeBatchModal);
+  document.getElementById('btnCancelBatch').addEventListener('click', closeBatchModal);
+  document.getElementById('btnSaveBatch').addEventListener('click', saveBatchResults);
   document.getElementById('recordForm').addEventListener('submit', saveRecordForm);
   document.getElementById('btnCloseEditModal').addEventListener('click', closeEditModal);
   document.getElementById('btnCancelEdit').addEventListener('click', closeEditModal);
@@ -335,6 +350,120 @@ function captureCameraPhoto() {
   const imageDataUrl = canvas.toDataURL("image/jpeg", 0.92);
   closeCameraModal();
   runOCRExtraction(imageDataUrl);
+}
+
+// IMPORT FEUILLE MULTI-BONS
+let batchResults = [];
+
+async function runBatchExtraction(imageDataUrl) {
+  document.getElementById('batchReviewModal').classList.add('active');
+  document.getElementById('batchStatusText').textContent = "Analyse de la feuille en cours...";
+  document.getElementById('batchList').innerHTML = '';
+  document.getElementById('btnSaveBatch').style.display = 'none';
+
+  try {
+    const [header, base64Data] = imageDataUrl.split(',');
+    const mediaType = header.match(/data:(.*?);/)[1];
+
+    const response = await fetch('/api/extract-batch', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ imageBase64: base64Data, mediaType })
+    });
+
+    const extractedList = await response.json();
+    if (!response.ok) throw new Error(extractedList.error || 'Erreur extraction');
+
+    batchResults = extractedList.map((item, idx) => ({
+      tempId: 'batch-' + idx,
+      nomPrenom: item.nomPrenom || '',
+      date: item.date || '',
+      montant: item.montant || '',
+      departement: item.departement || '',
+      kilometrage: item.kilometrage || '',
+      immatriculation: item.immatriculation || ''
+    }));
+
+    if (batchResults.length === 0) {
+      document.getElementById('batchStatusText').textContent = "Aucun bon detecte sur cette feuille. Reessayez avec une photo plus nette.";
+      return;
+    }
+
+    document.getElementById('batchStatusText').textContent = batchResults.length + " bon(s) detecte(s). Verifiez/corrigez avant d'enregistrer.";
+    renderBatchList();
+    document.getElementById('btnSaveBatch').style.display = 'block';
+  } catch (error) {
+    console.error("Erreur batch:", error);
+    document.getElementById('batchStatusText').textContent = "Erreur d'extraction. Reessayez avec une photo plus nette.";
+  }
+}
+
+function renderBatchList() {
+  const container = document.getElementById('batchList');
+  container.innerHTML = '';
+
+  const allDepts = Array.from(new Set([...state.departments, ...state.records.map(r => r.departement).filter(Boolean)])).sort();
+
+  batchResults.forEach((item, idx) => {
+    const div = document.createElement('div');
+    div.className = 'batch-item';
+    const deptOptions = allDepts.map(d => '<option value="' + escapeHtml(d) + '"' + (d === item.departement ? ' selected' : '') + '>' + escapeHtml(d) + '</option>').join('');
+
+    div.innerHTML = `
+      <div class="batch-item-header">
+        <span class="batch-item-title">Bon #${idx + 1}</span>
+        <button type="button" class="batch-item-remove" onclick="removeBatchItem(${idx})">🗑️</button>
+      </div>
+      <div class="batch-item-fields">
+        <input type="text" class="full-width" placeholder="Nom et prenom" value="${escapeHtml(item.nomPrenom)}" oninput="updateBatchField(${idx}, 'nomPrenom', this.value)">
+        <input type="date" value="${item.date}" oninput="updateBatchField(${idx}, 'date', this.value)">
+        <input type="number" placeholder="Montant" value="${item.montant}" oninput="updateBatchField(${idx}, 'montant', this.value)">
+        <select onchange="updateBatchField(${idx}, 'departement', this.value)">
+          <option value="">-- Departement --</option>
+          ${deptOptions}
+        </select>
+        <input type="number" placeholder="Kilometrage" value="${item.kilometrage}" oninput="updateBatchField(${idx}, 'kilometrage', this.value)">
+        <input type="text" class="full-width" placeholder="Immatriculation" value="${escapeHtml(item.immatriculation)}" oninput="updateBatchField(${idx}, 'immatriculation', this.value)">
+      </div>
+    `;
+    container.appendChild(div);
+  });
+}
+
+function updateBatchField(idx, field, value) {
+  batchResults[idx][field] = value;
+}
+
+function removeBatchItem(idx) {
+  batchResults.splice(idx, 1);
+  renderBatchList();
+  document.getElementById('batchStatusText').textContent = batchResults.length + " bon(s) a enregistrer.";
+}
+
+async function saveBatchResults() {
+  let savedCount = 0;
+  for (const item of batchResults) {
+    if (!item.nomPrenom || !item.nomPrenom.trim()) continue;
+    state.records.unshift({
+      id: "BON-" + Date.now().toString().slice(-6) + "-" + savedCount,
+      nomPrenom: item.nomPrenom.trim(),
+      date: item.date || new Date().toISOString().split('T')[0],
+      montant: parseFloat(item.montant) || 0,
+      departement: item.departement || '',
+      kilometrage: parseInt(item.kilometrage) || 0,
+      immatriculation: (item.immatriculation || '').trim(),
+      image: null
+    });
+    savedCount++;
+  }
+  await saveRecords();
+  closeBatchModal();
+  showToast("🎉 " + savedCount + " bon(s) enregistre(s) !", "success");
+}
+
+function closeBatchModal() {
+  document.getElementById('batchReviewModal').classList.remove('active');
+  batchResults = [];
 }
 
 // EXTRACTION AUTOMATIQUE via IA Vision (Claude) - lit aussi l'écriture manuscrite

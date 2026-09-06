@@ -483,3 +483,53 @@ select.form-input,
   -webkit-appearance: none;
   appearance: none;
 }
+
+/* BATCH REVIEW - import feuille multi-bons */
+.batch-item {
+  background: var(--bg-dark);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 14px;
+  margin-bottom: 12px;
+}
+
+.batch-item-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.batch-item-title {
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.batch-item-remove {
+  background: none;
+  border: none;
+  color: var(--danger);
+  font-size: 20px;
+  cursor: pointer;
+}
+
+.batch-item-fields {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.batch-item-fields input,
+.batch-item-fields select {
+  padding: 8px;
+  background: var(--bg-light);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: #fff;
+  -webkit-text-fill-color: #fff;
+  font-size: 13px;
+}
+
+.batch-item-fields .full-width {
+  grid-column: 1 / -1;
+}
