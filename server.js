@@ -23,7 +23,7 @@ app.post('/api/extract', async (req, res) => {
       '  "montant": nombre decimal du montant total paye (cherche MONTANT ou TOTAL, valeur imprimee),\n' +
       '  "departement": "mot ecrit au stylo qui identifie un departement, projet ou chantier (souvent une seule ligne courte comme Casting, Logistique, etc., situee entre le nom et le kilometrage). Si absent, laisse vide.",\n' +
       '  "kilometrage": nombre entier du kilometrage ecrit au stylo (souvent suivi de Km),\n' +
-      '  "immatriculation": "immatriculation marocaine ecrite au stylo. FORMAT STRICT: [chiffres][UNE SEULE lettre][chiffres], SANS tiret, exemple 19714B2. Ne mets JAMAIS plus d une lettre, ne mets AUCUN tiret, ne confonds pas un chiffre manuscrit (comme 7) avec une lettre (comme F). Retranscris chiffre par chiffre exactement ce qui est ecrit."\n' +
+      '  "immatriculation": "immatriculation marocaine ecrite au stylo. FORMAT STRICT: [chiffres][UNE SEULE lettre][chiffres], SANS tiret, exemple 19714B2. ATTENTION PARTICULIERE: le chiffre manuscrit 7 est TRES SOUVENT confondu avec la lettre F a cause de la barre horizontale du 7 cursif - si tu vois un caractere qui pourrait etre un 7 barre OU un F, et qu il y a deja une autre lettre plus loin dans le numero, alors ce caractere est presque certainement un 7 (chiffre), PAS un F, car une immatriculation marocaine ne contient QU UNE SEULE lettre au total. Compte le nombre de lettres que tu identifies: si tu en vois 2 ou plus, la premiere est tres probablement un chiffre 7 mal interprete. Retranscris chiffre par chiffre exactement ce qui est ecrit."\n' +
       "}\n" +
       'Si un champ est illisible ou absent, mets une chaine vide "" (ou 0 pour les nombres). Ne mets AUCUN texte avant ou apres le JSON.';
 
@@ -103,7 +103,7 @@ app.post('/api/extract-batch', async (req, res) => {
       '    "montant": nombre decimal du montant total paye,\n' +
       '    "departement": "mot ecrit au stylo identifiant un departement/projet/chantier, vide si absent",\n' +
       '    "kilometrage": nombre entier du kilometrage ecrit au stylo,\n' +
-      '    "immatriculation": "immatriculation marocaine ecrite au stylo, FORMAT STRICT [chiffres][UNE lettre][chiffres] SANS tiret"\n' +
+      '    "immatriculation": "immatriculation marocaine ecrite au stylo, FORMAT STRICT [chiffres][UNE SEULE lettre][chiffres] SANS tiret. ATTENTION: le chiffre 7 manuscrit est souvent confondu avec la lettre F. Une immatriculation marocaine ne contient QU UNE SEULE lettre - si tu identifies 2 lettres ou plus, la premiere est probablement un 7 mal lu."\n' +
       "  }\n" +
       "]\n" +
       "Un objet par bon detecte sur la feuille. Si un champ est illisible, mets une chaine vide (ou 0). Ne mets AUCUN texte avant ou apres le tableau JSON.";
