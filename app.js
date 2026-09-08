@@ -701,6 +701,7 @@ function renderTollTable() {
       ? '<span style="color: var(--success);">✅ Oui</span>'
       : '<span style="color: #f59e0b;">⏳ Non</span>';
     tr.innerHTML = `
+      <td>${escapeHtml(record.personne || '-')}</td>
       <td>${record.date}</td>
       <td>${escapeHtml(record.trajet || '-')}</td>
       <td><strong>${parseFloat(record.montant).toFixed(2)} DH</strong></td>
@@ -823,7 +824,8 @@ async function runTollExtraction(imageDataUrl) {
       trajet: extracted.trajet || '',
       montant: extracted.montant || '',
       rembourse: 'NO',
-      image: imageDataUrl
+      image: imageDataUrl,
+      personne: state.lastTollPersonne || ''
     });
 
     showToast("✅ Ticket lu automatiquement !", "success");
@@ -842,6 +844,7 @@ function openEditTollModalWithData(data) {
   tollState.currentEditingId = data.id || null;
   tollState.tempImage = data.image || null;
 
+  document.getElementById('tollInputPersonne').value = data.personne || '';
   document.getElementById('tollInputDate').value = data.date || new Date().toISOString().split('T')[0];
   document.getElementById('tollInputTrajet').value = data.trajet || '';
   document.getElementById('tollInputMontant').value = data.montant || '';
@@ -862,6 +865,7 @@ function closeEditTollModal() {
   document.getElementById('editTollModal').classList.remove('active');
   tollState.currentEditingId = null;
   tollState.tempImage = null;
+  document.getElementById('tollInputPersonne').value = '';
   document.getElementById('tollInputDate').value = '';
   document.getElementById('tollInputTrajet').value = '';
   document.getElementById('tollInputMontant').value = '';
@@ -872,15 +876,21 @@ function closeEditTollModal() {
 
 function saveTollForm(e) {
   e.preventDefault();
+  const personne = document.getElementById('tollInputPersonne').value.trim();
   const date = document.getElementById('tollInputDate').value;
   const trajet = document.getElementById('tollInputTrajet').value.trim();
   const montant = parseFloat(document.getElementById('tollInputMontant').value) || 0;
   const rembourse = document.getElementById('tollInputRembourse').value;
 
+  if (!personne) {
+    showToast("Veuillez renseigner le nom de la personne.", "warning");
+    return;
+  }
+
   const existingIndex = tollState.records.findIndex(r => r.id === tollState.currentEditingId);
   const recordObj = {
     id: tollState.currentEditingId || ("TOLL-" + Date.now().toString().slice(-6)),
-    date, trajet, montant, rembourse,
+    personne, date, trajet, montant, rembourse,
     image: tollState.tempImage
   };
 
@@ -890,6 +900,7 @@ function saveTollForm(e) {
     tollState.records.unshift(recordObj);
   }
 
+  state.lastTollPersonne = personne;
   saveTollRecords();
   closeEditTollModal();
   showToast("✅ Ticket enregistre !", "success");
@@ -910,11 +921,11 @@ function exportTollToExcel() {
       .num { text-align: right; }
     </style></head><body>
       <div style="font-size:16pt;font-weight:bold;margin-bottom:10px;">Rapport Frais Autoroute</div>
-      <table><thead><tr><th>Date</th><th>Trajet</th><th>Montant (MAD)</th><th>Rembourse</th></tr></thead><tbody>`;
+      <table><thead><tr><th>Personne</th><th>Date</th><th>Trajet</th><th>Montant (MAD)</th><th>Rembourse</th></tr></thead><tbody>`;
   filtered.forEach(r => {
-    html += `<tr><td>${r.date}</td><td>${escapeHtml(r.trajet || '')}</td><td class="num">${parseFloat(r.montant).toFixed(2)}</td><td>${r.rembourse === 'YES' ? 'Oui' : 'Non'}</td></tr>`;
+    html += `<tr><td>${escapeHtml(r.personne || '')}</td><td>${r.date}</td><td>${escapeHtml(r.trajet || '')}</td><td class="num">${parseFloat(r.montant).toFixed(2)}</td><td>${r.rembourse === 'YES' ? 'Oui' : 'Non'}</td></tr>`;
   });
-  html += `<tr style="background-color:#f1f5f9;font-weight:bold;"><td colspan="2" style="text-align:right;">TOTAL :</td><td class="num" style="color:#059669;"><b>${totalAmount.toFixed(2)}</b></td><td></td></tr></tbody></table></body></html>`;
+  html += `<tr style="background-color:#f1f5f9;font-weight:bold;"><td colspan="3" style="text-align:right;">TOTAL :</td><td class="num" style="color:#059669;"><b>${totalAmount.toFixed(2)}</b></td><td></td></tr></tbody></table></body></html>`;
   const blob = new Blob([html], { type: "application/vnd.ms-excel;charset=utf-8" });
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
