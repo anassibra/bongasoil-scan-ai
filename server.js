@@ -169,6 +169,82 @@ app.post('/api/extract-batch', async (req, res) => {
   }
 });
 
+app.post('/api/extract-toll', async (req, res) => {
+  try {
+    const { imageBase64, mediaType } = req.body;
+    if (!imageBase64) return res.status(400).json({ error: 'imageBase64 manquant' });
+    if (!API_KEY) return res.status(500).json({ error: 'Cle API non configuree sur le serveur' });
+
+    const prompt = "Tu regardes la photo d'un ticket de peage autoroute marocain (ADM). Ce sont des infos IMPRIMEES.\n" +
+      "Extrais ces champs et reponds UNIQUEMENT avec un objet JSON valide, rien d'autre, pas de markdown :\n" +
+      "{\n" +
+      '  "date": "date au format AAAA-MM-JJ",\n' +
+      '  "montant": nombre decimal du montant paye en MAD,\n' +
+      '  "trajet": "gare d entree - gare de sortie si visibles, sinon le nom de la gare/station imprimee, sinon chaine vide"\n' +
+      "}\n" +
+      'Si un champ est illisible ou absent, mets une chaine vide "" (ou 0 pour le montant). Ne mets AUCUN texte avant ou apres le JSON.';
+
+    const payload = JSON.stringify({
+      model: "claude-sonnet-4-6",
+      max_tokens: 400,
+      messages: [{
+        role: "user",
+        content: [
+          { type: "image", source: { type: "base64", media_type: mediaType || "image/jpeg", data: imageBase64 } },
+          { type: "text", text: prompt }
+        ]
+      }]
+    });
+
+    const options = {
+      hostname: 'api.anthropic.com',
+      path: '/v1/messages',
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': API_KEY,
+        'anthropic-version': '2023-06-01',
+        'Content-Length': Buffer.byteLength(payload)
+      }
+    };
+
+    const apiReq = https.request(options, (apiRes) => {
+      let data = '';
+      apiRes.on('data', (chunk) => data += chunk);
+      apiRes.on('end', () => {
+        try {
+          const parsed = JSON.parse(data);
+          if (parsed.error) {
+            console.error('Erreur API Anthropic:', parsed.error);
+            return res.status(500).json({ error: parsed.error.message || 'Erreur API' });
+          }
+          const textBlock = parsed.content?.find(c => c.type === 'text');
+          if (!textBlock) return res.status(500).json({ error: 'Reponse IA invalide' });
+
+          const cleanText = textBlock.text.replace(/```json|```/g, '').trim();
+          const extracted = JSON.parse(cleanText);
+          res.json(extracted);
+        } catch (e) {
+          console.error('Erreur parsing toll:', e, data);
+          res.status(500).json({ error: 'Erreur de lecture de la reponse IA' });
+        }
+      });
+    });
+
+    apiReq.on('error', (e) => {
+      console.error('Erreur requete:', e);
+      res.status(500).json({ error: 'Erreur de connexion a l API' });
+    });
+
+    apiReq.write(payload);
+    apiReq.end();
+
+  } catch (error) {
+    console.error('Erreur serveur toll:', error);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'index.html'));
 });

@@ -31,7 +31,13 @@
     </div>
   </header>
 
+  <nav class="tab-bar">
+    <button class="tab-btn active" data-tab="gasoil">⛽ Gasoil</button>
+    <button class="tab-btn" data-tab="autoroute">🛣️ Autoroute</button>
+  </nav>
+
   <main class="app-main">
+    <div id="tabGasoil" class="tab-panel active">
 
     <section class="action-section">
       <button id="btnOpenScanner" class="btn-primary btn-lg">📷 Scanner un Bon</button>
@@ -81,7 +87,49 @@
       </div>
     </section>
 
+    </div>
+
+    <div id="tabAutoroute" class="tab-panel">
+      <section class="action-section">
+        <button id="btnOpenScannerToll" class="btn-primary btn-lg">📷 Scanner un Ticket</button>
+        <button id="btnUploadToll" class="btn-secondary btn-lg">📁 Importer une Photo</button>
+      </section>
+
+      <section class="filters-section">
+        <div class="filter-row">
+          <select id="filterTollRemb" class="filter-select">
+            <option value="ALL">Tous (rembourse ou non)</option>
+            <option value="YES">Rembourse</option>
+            <option value="NO">Non rembourse</option>
+          </select>
+          <button id="btnExportToll" class="btn-secondary">📊 Exporter Excel</button>
+        </div>
+      </section>
+
+      <section class="table-section">
+        <div class="table-container">
+          <table class="simple-table">
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Trajet</th>
+                <th>Montant</th>
+                <th>Rembourse</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="tollTableBody"></tbody>
+          </table>
+        </div>
+        <div id="tollEmptyState" class="empty-state" style="display: none;">
+          <div class="empty-icon">🛣️</div>
+          <p>Aucun ticket d'autoroute enregistre</p>
+        </div>
+      </section>
+    </div>
   </main>
+
+  <input type="file" id="fileInputToll" accept="image/*,.jpg,.jpeg,.png,.heic,.heif,application/octet-stream" style="display:none;">
 
   <!-- Modal Camera (redesigné) -->
   <div id="cameraModal" class="modal">
@@ -106,6 +154,67 @@
         <div style="width:64px;"></div>
       </div>
       <input type="file" id="fileInputCamera" accept="image/*,.jpg,.jpeg,.png,.heic,.heif,application/octet-stream" style="display:none;">
+    </div>
+  </div>
+
+  <!-- Modal Camera Peage -->
+  <div id="cameraModalToll" class="modal">
+    <div class="modal-overlay"></div>
+    <div class="modal-content modal-fullscreen">
+      <div class="camera-topbar">
+        <button id="btnCloseCameraModalToll" class="btn-close-camera">&times;</button>
+        <span class="camera-title">Scanner Ticket Autoroute</span>
+        <span style="width:36px;"></span>
+      </div>
+      <div class="camera-container">
+        <video id="scannerVideoToll" class="camera-video" autoplay playsinline muted></video>
+        <div class="camera-frame"></div>
+        <div id="captureCountdownToll" class="capture-countdown"></div>
+      </div>
+      <div class="camera-bottombar">
+        <div style="width:64px;"></div>
+        <button id="btnCapturePhotoToll" class="btn-capture-main" aria-label="Capturer"></button>
+        <div style="width:64px;"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Edit Ticket Peage -->
+  <div id="editTollModal" class="modal">
+    <div class="modal-overlay"></div>
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>Valider le Ticket</h2>
+        <button id="btnCloseEditTollModal" class="btn-close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <img id="editTollImagePreview" class="preview-image" src="" alt="Ticket" style="display: none;">
+        <form id="tollForm" class="form-simple">
+          <div class="form-group">
+            <label>Date <span class="auto-tag">detection auto</span></label>
+            <input type="date" id="tollInputDate" class="form-input" required>
+          </div>
+          <div class="form-group">
+            <label>Trajet</label>
+            <input type="text" id="tollInputTrajet" class="form-input" placeholder="ex: Rabat - Casablanca">
+          </div>
+          <div class="form-group">
+            <label>Montant (MAD) <span class="auto-tag">detection auto</span></label>
+            <input type="number" id="tollInputMontant" class="form-input" step="0.01" required>
+          </div>
+          <div class="form-group">
+            <label>Rembourse ?</label>
+            <select id="tollInputRembourse" class="form-input">
+              <option value="NO">Non rembourse</option>
+              <option value="YES">Rembourse</option>
+            </select>
+          </div>
+          <div class="form-actions">
+            <button type="button" id="btnCancelToll" class="btn-secondary">Annuler</button>
+            <button type="submit" class="btn-primary">Enregistrer</button>
+          </div>
+        </form>
+      </div>
     </div>
   </div>
 

@@ -647,3 +647,336 @@ function showToast(message, type = "info") {
     setTimeout(() => toast.remove(), 300);
   }, 3500);
 }
+
+// ==================== MODULE AUTOROUTE (PETTY CASH) ====================
+let tollState = {
+  records: [],
+  filterRembourse: 'ALL',
+  cameraStream: null,
+  currentEditingId: null,
+  tempImage: null,
+  countdownTimer: null
+};
+
+async function loadTollRecords() {
+  try {
+    const existing = await idbGet('toll_records');
+    tollState.records = (existing && Array.isArray(existing)) ? existing : [];
+  } catch (e) {
+    tollState.records = [];
+  }
+}
+
+async function saveTollRecords() {
+  try {
+    await idbSet('toll_records', tollState.records);
+  } catch (e) {
+    showToast('⚠️ Erreur de sauvegarde', 'warning');
+  }
+  renderTollTable();
+}
+
+function getFilteredTollRecords() {
+  return tollState.records.filter(r => {
+    if (tollState.filterRembourse !== 'ALL' && r.rembourse !== tollState.filterRembourse) return false;
+    return true;
+  });
+}
+
+function renderTollTable() {
+  const tbody = document.getElementById('tollTableBody');
+  if (!tbody) return;
+  tbody.innerHTML = '';
+  const filtered = getFilteredTollRecords();
+
+  if (filtered.length === 0) {
+    document.getElementById('tollEmptyState').style.display = 'block';
+    return;
+  }
+  document.getElementById('tollEmptyState').style.display = 'none';
+
+  filtered.forEach(record => {
+    const tr = document.createElement('tr');
+    const rembBadge = record.rembourse === 'YES'
+      ? '<span style="color: var(--success);">✅ Oui</span>'
+      : '<span style="color: #f59e0b;">⏳ Non</span>';
+    tr.innerHTML = `
+      <td>${record.date}</td>
+      <td>${escapeHtml(record.trajet || '-')}</td>
+      <td><strong>${parseFloat(record.montant).toFixed(2)} DH</strong></td>
+      <td>${rembBadge}</td>
+      <td>
+        <div class="table-actions">
+          <button class="action-btn" onclick="toggleTollRembourse('${record.id}')">🔄</button>
+          <button class="action-btn" onclick="editTollRecord('${record.id}')">✏️</button>
+          <button class="action-btn delete" onclick="deleteTollRecord('${record.id}')">🗑️</button>
+        </div>
+      </td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+function toggleTollRembourse(id) {
+  const record = tollState.records.find(r => r.id === id);
+  if (record) {
+    record.rembourse = record.rembourse === 'YES' ? 'NO' : 'YES';
+    saveTollRecords();
+    showToast(record.rembourse === 'YES' ? '✅ Marque comme rembourse' : '⏳ Marque comme non rembourse', 'info');
+  }
+}
+
+function deleteTollRecord(id) {
+  if (confirm('Supprimer ce ticket ?')) {
+    tollState.records = tollState.records.filter(r => r.id !== id);
+    saveTollRecords();
+    showToast('Ticket supprime.', 'info');
+  }
+}
+
+function editTollRecord(id) {
+  const record = tollState.records.find(r => r.id === id);
+  if (record) openEditTollModalWithData(record);
+}
+
+// CAMERA PEAGE
+async function openCameraModalToll() {
+  document.getElementById('cameraModalToll').classList.add('active');
+  const video = document.getElementById('scannerVideoToll');
+  try {
+    tollState.cameraStream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: 'environment', width: { ideal: 1920 }, height: { ideal: 1080 } }
+    });
+    video.srcObject = tollState.cameraStream;
+    video.onloadedmetadata = () => startTollCountdown();
+  } catch (err) {
+    showToast("Impossible d'acceder a la camera.", "warning");
+  }
+}
+
+function startTollCountdown() {
+  let count = 3;
+  const el = document.getElementById('captureCountdownToll');
+  el.style.display = 'flex';
+  el.textContent = count;
+  tollState.countdownTimer = setInterval(() => {
+    count--;
+    if (count <= 0) {
+      cancelTollCountdown();
+      captureTollPhoto();
+    } else {
+      el.textContent = count;
+    }
+  }, 1000);
+}
+
+function cancelTollCountdown() {
+  if (tollState.countdownTimer) {
+    clearInterval(tollState.countdownTimer);
+    tollState.countdownTimer = null;
+  }
+  document.getElementById('captureCountdownToll').style.display = 'none';
+}
+
+function closeCameraModalToll() {
+  cancelTollCountdown();
+  document.getElementById('cameraModalToll').classList.remove('active');
+  if (tollState.cameraStream) {
+    tollState.cameraStream.getTracks().forEach(track => track.stop());
+    tollState.cameraStream = null;
+  }
+}
+
+function captureTollPhoto() {
+  const video = document.getElementById('scannerVideoToll');
+  if (!video.videoWidth) return;
+  const canvas = document.createElement('canvas');
+  canvas.width = video.videoWidth;
+  canvas.height = video.videoHeight;
+  const ctx = canvas.getContext('2d');
+  ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+  const imageDataUrl = canvas.toDataURL('image/jpeg', 0.92);
+  closeCameraModalToll();
+  runTollExtraction(imageDataUrl);
+}
+
+async function runTollExtraction(imageDataUrl) {
+  tollState.tempImage = imageDataUrl;
+  showToast("🧠 Lecture du ticket en cours...", "info");
+
+  try {
+    const [header, base64Data] = imageDataUrl.split(',');
+    const mediaType = header.match(/data:(.*?);/)[1];
+
+    const response = await fetch('/api/extract-toll', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ imageBase64: base64Data, mediaType })
+    });
+
+    const extracted = await response.json();
+    if (!response.ok) throw new Error(extracted.error || 'Erreur extraction');
+
+    openEditTollModalWithData({
+      id: "TOLL-" + Date.now().toString().slice(-6),
+      date: extracted.date || '',
+      trajet: extracted.trajet || '',
+      montant: extracted.montant || '',
+      rembourse: 'NO',
+      image: imageDataUrl
+    });
+
+    showToast("✅ Ticket lu automatiquement !", "success");
+  } catch (error) {
+    console.error("Erreur extraction toll:", error);
+    showToast("⚠️ Extraction echouee, remplissez manuellement.", "warning");
+    openEditTollModalWithData({
+      id: "TOLL-" + Date.now().toString().slice(-6),
+      image: imageDataUrl,
+      rembourse: 'NO'
+    });
+  }
+}
+
+function openEditTollModalWithData(data) {
+  tollState.currentEditingId = data.id || null;
+  tollState.tempImage = data.image || null;
+
+  document.getElementById('tollInputDate').value = data.date || new Date().toISOString().split('T')[0];
+  document.getElementById('tollInputTrajet').value = data.trajet || '';
+  document.getElementById('tollInputMontant').value = data.montant || '';
+  document.getElementById('tollInputRembourse').value = data.rembourse || 'NO';
+
+  const previewBox = document.getElementById('editTollImagePreview');
+  if (data.image) {
+    previewBox.src = data.image;
+    previewBox.style.display = 'block';
+  } else {
+    previewBox.style.display = 'none';
+  }
+
+  document.getElementById('editTollModal').classList.add('active');
+}
+
+function closeEditTollModal() {
+  document.getElementById('editTollModal').classList.remove('active');
+  tollState.currentEditingId = null;
+  tollState.tempImage = null;
+  document.getElementById('tollInputDate').value = '';
+  document.getElementById('tollInputTrajet').value = '';
+  document.getElementById('tollInputMontant').value = '';
+  const previewBox = document.getElementById('editTollImagePreview');
+  previewBox.src = '';
+  previewBox.style.display = 'none';
+}
+
+function saveTollForm(e) {
+  e.preventDefault();
+  const date = document.getElementById('tollInputDate').value;
+  const trajet = document.getElementById('tollInputTrajet').value.trim();
+  const montant = parseFloat(document.getElementById('tollInputMontant').value) || 0;
+  const rembourse = document.getElementById('tollInputRembourse').value;
+
+  const existingIndex = tollState.records.findIndex(r => r.id === tollState.currentEditingId);
+  const recordObj = {
+    id: tollState.currentEditingId || ("TOLL-" + Date.now().toString().slice(-6)),
+    date, trajet, montant, rembourse,
+    image: tollState.tempImage
+  };
+
+  if (existingIndex >= 0) {
+    tollState.records[existingIndex] = recordObj;
+  } else {
+    tollState.records.unshift(recordObj);
+  }
+
+  saveTollRecords();
+  closeEditTollModal();
+  showToast("✅ Ticket enregistre !", "success");
+}
+
+function exportTollToExcel() {
+  const filtered = getFilteredTollRecords();
+  if (filtered.length === 0) {
+    showToast("Aucune donnee.", "warning");
+    return;
+  }
+  const totalAmount = filtered.reduce((sum, r) => sum + (parseFloat(r.montant) || 0), 0);
+  let html = `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
+    <head><meta charset="utf-8"><style>
+      table { border-collapse: collapse; width: 100%; font-family: Arial; font-size: 11pt; }
+      th { background-color: #1f2937; color: #fff; font-weight: bold; border: 1px solid #475569; padding: 10px; }
+      td { border: 1px solid #cbd5e1; padding: 8px; }
+      .num { text-align: right; }
+    </style></head><body>
+      <div style="font-size:16pt;font-weight:bold;margin-bottom:10px;">Rapport Frais Autoroute</div>
+      <table><thead><tr><th>Date</th><th>Trajet</th><th>Montant (MAD)</th><th>Rembourse</th></tr></thead><tbody>`;
+  filtered.forEach(r => {
+    html += `<tr><td>${r.date}</td><td>${escapeHtml(r.trajet || '')}</td><td class="num">${parseFloat(r.montant).toFixed(2)}</td><td>${r.rembourse === 'YES' ? 'Oui' : 'Non'}</td></tr>`;
+  });
+  html += `<tr style="background-color:#f1f5f9;font-weight:bold;"><td colspan="2" style="text-align:right;">TOTAL :</td><td class="num" style="color:#059669;"><b>${totalAmount.toFixed(2)}</b></td><td></td></tr></tbody></table></body></html>`;
+  const blob = new Blob([html], { type: "application/vnd.ms-excel;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.setAttribute("href", url);
+  link.setAttribute("download", `frais_autoroute_${new Date().toISOString().split('T')[0]}.xls`);
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  showToast("📊 Excel exporte !", "success");
+}
+
+// TABS
+function setupTabs() {
+  document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById('tab' + btn.dataset.tab.charAt(0).toUpperCase() + btn.dataset.tab.slice(1)).classList.add('active');
+    });
+  });
+}
+
+// EVENT LISTENERS AUTOROUTE
+function setupTollEventListeners() {
+  document.getElementById('btnOpenScannerToll').addEventListener('click', openCameraModalToll);
+  document.getElementById('btnCloseCameraModalToll').addEventListener('click', closeCameraModalToll);
+  document.getElementById('btnCapturePhotoToll').addEventListener('click', () => {
+    cancelTollCountdown();
+    captureTollPhoto();
+  });
+
+  document.getElementById('btnUploadToll').addEventListener('click', () => {
+    document.getElementById('fileInputToll').click();
+  });
+  document.getElementById('fileInputToll').addEventListener('change', (e) => {
+    if (e.target.files && e.target.files[0]) {
+      const reader = new FileReader();
+      reader.onload = (ev) => runTollExtraction(ev.target.result);
+      reader.readAsDataURL(e.target.files[0]);
+      e.target.value = '';
+    }
+  });
+
+  document.getElementById('tollForm').addEventListener('submit', saveTollForm);
+  document.getElementById('btnCloseEditTollModal').addEventListener('click', closeEditTollModal);
+  document.getElementById('btnCancelToll').addEventListener('click', closeEditTollModal);
+
+  document.getElementById('filterTollRemb').addEventListener('change', (e) => {
+    tollState.filterRembourse = e.target.value;
+    renderTollTable();
+  });
+
+  document.getElementById('btnExportToll').addEventListener('click', exportTollToExcel);
+}
+
+// Init module Autoroute (appele apres le chargement principal)
+(async function initTollModule() {
+  document.addEventListener('DOMContentLoaded', async () => {
+    await loadTollRecords();
+    setupTollEventListeners();
+    setupTabs();
+    renderTollTable();
+  });
+})();
