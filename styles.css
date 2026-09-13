@@ -1,17 +1,17 @@
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
 :root {
-  --bg: #0b1120;
-  --surface: #161f32;
-  --surface-2: #1e293b;
-  --border: #2a3548;
-  --text: #f1f5f9;
-  --text-muted: #94a3b8;
-  --primary: #3b82f6;
-  --primary-dark: #2563eb;
-  --success: #10b981;
-  --warning: #f59e0b;
-  --danger: #ef4444;
+  --bg: #0f1419;
+  --surface: #171d26;
+  --surface-2: #1f2733;
+  --border: #2c3644;
+  --text: #eef1f5;
+  --text-muted: #8a94a3;
+  --primary: #0ea5e9;
+  --primary-dark: #0284c7;
+  --success: #059669;
+  --warning: #d97706;
+  --danger: #dc2626;
   --radius: 14px;
   --radius-sm: 10px;
 }

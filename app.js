@@ -1028,7 +1028,7 @@ function renderStatsTab() {
   renderChartRembourse();
 }
 
-const CHART_COLORS = ['#2563eb', '#059669', '#f59e0b', '#dc2626', '#7c3aed', '#0891b2', '#db2777', '#65a30d', '#ea580c', '#4f46e5'];
+const CHART_COLORS = ['#0ea5e9', '#059669', '#d97706', '#dc2626', '#6366f1', '#0891b2', '#db2777', '#65a30d', '#ea580c', '#4f46e5'];
 
 function renderChartByDept() {
   const deptTotals = {};
@@ -1082,7 +1082,7 @@ function renderChartByPerson() {
     type: 'bar',
     data: {
       labels,
-      datasets: [{ label: 'Total (DH)', data, backgroundColor: '#2563eb' }]
+      datasets: [{ label: 'Total (DH)', data, backgroundColor: '#0ea5e9' }]
     },
     options: {
       responsive: true,
@@ -1127,8 +1127,8 @@ function renderChartByMonth() {
       datasets: [{
         label: 'Depenses totales (DH)',
         data,
-        borderColor: '#2563eb',
-        backgroundColor: 'rgba(37, 99, 235, 0.15)',
+        borderColor: '#0ea5e9',
+        backgroundColor: 'rgba(14, 165, 233, 0.15)',
         fill: true,
         tension: 0.3
       }]
@@ -1157,7 +1157,7 @@ function renderChartRembourse() {
     type: 'pie',
     data: {
       labels: ['Rembourse', 'Non rembourse'],
-      datasets: [{ data: [rembourse, nonRembourse], backgroundColor: ['#059669', '#f59e0b'] }]
+      datasets: [{ data: [rembourse, nonRembourse], backgroundColor: ['#059669', '#d97706'] }]
     },
     options: {
       responsive: true,
