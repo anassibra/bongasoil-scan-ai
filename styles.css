@@ -568,3 +568,62 @@ select.form-input,
 .tab-panel.active {
   display: block;
 }
+
+/* STATISTIQUES PRO */
+.stats-summary-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.stat-card-pro {
+  background: var(--bg-light);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 16px;
+}
+
+.stat-card-pro.highlight {
+  background: linear-gradient(135deg, var(--primary), #1d4ed8);
+  border: none;
+}
+
+.stat-card-label {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-bottom: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.stat-card-pro.highlight .stat-card-label {
+  color: rgba(255,255,255,0.85);
+}
+
+.stat-card-value {
+  font-size: 20px;
+  font-weight: 700;
+  color: #fff;
+}
+
+.chart-section {
+  background: var(--bg-light);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 20px;
+}
+
+.chart-title {
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 14px;
+  color: var(--text);
+}
+
+@media (min-width: 768px) {
+  .stats-summary-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}

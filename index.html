@@ -34,6 +34,7 @@
   <nav class="tab-bar">
     <button class="tab-btn active" data-tab="gasoil">⛽ Gasoil</button>
     <button class="tab-btn" data-tab="autoroute">🛣️ Autoroute</button>
+    <button class="tab-btn" data-tab="stats">📊 Statistiques</button>
   </nav>
 
   <main class="app-main">
@@ -126,6 +127,47 @@
           <div class="empty-icon">🛣️</div>
           <p>Aucun ticket d'autoroute enregistre</p>
         </div>
+      </section>
+    </div>
+
+    <div id="tabStats" class="tab-panel">
+      <section class="stats-summary-grid">
+        <div class="stat-card-pro">
+          <div class="stat-card-label">Total Gasoil</div>
+          <div id="statsTotalGasoil" class="stat-card-value">0.00 DH</div>
+        </div>
+        <div class="stat-card-pro">
+          <div class="stat-card-label">Total Autoroute</div>
+          <div id="statsTotalToll" class="stat-card-value">0.00 DH</div>
+        </div>
+        <div class="stat-card-pro highlight">
+          <div class="stat-card-label">Total Combine</div>
+          <div id="statsTotalCombined" class="stat-card-value">0.00 DH</div>
+        </div>
+        <div class="stat-card-pro">
+          <div class="stat-card-label">Non Rembourse (Autoroute)</div>
+          <div id="statsNonRembourse" class="stat-card-value">0.00 DH</div>
+        </div>
+      </section>
+
+      <section class="chart-section">
+        <h3 class="chart-title">💰 Depenses par Departement (Gasoil)</h3>
+        <canvas id="chartByDept" height="220"></canvas>
+      </section>
+
+      <section class="chart-section">
+        <h3 class="chart-title">👤 Depenses par Personne (Top 10, Gasoil + Autoroute)</h3>
+        <canvas id="chartByPerson" height="220"></canvas>
+      </section>
+
+      <section class="chart-section">
+        <h3 class="chart-title">📈 Evolution Mensuelle des Depenses</h3>
+        <canvas id="chartByMonth" height="220"></canvas>
+      </section>
+
+      <section class="chart-section">
+        <h3 class="chart-title">🛣️ Autoroute : Rembourse vs Non Rembourse</h3>
+        <canvas id="chartRembourse" height="220"></canvas>
       </section>
     </div>
   </main>
@@ -311,6 +353,7 @@
 
   <div id="toastContainer" class="toast-container"></div>
 
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
   <script src="sample_data.js"></script>
   <script src="app.js"></script>
   <script>

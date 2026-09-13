@@ -945,6 +945,9 @@ function setupTabs() {
       document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
       btn.classList.add('active');
       document.getElementById('tab' + btn.dataset.tab.charAt(0).toUpperCase() + btn.dataset.tab.slice(1)).classList.add('active');
+      if (btn.dataset.tab === 'stats') {
+        renderStatsTab();
+      }
     });
   });
 }
@@ -991,3 +994,174 @@ function setupTollEventListeners() {
     renderTollTable();
   });
 })();
+
+// ==================== MODULE STATISTIQUES ====================
+let chartInstances = {};
+
+function destroyChart(key) {
+  if (chartInstances[key]) {
+    chartInstances[key].destroy();
+    chartInstances[key] = null;
+  }
+}
+
+function renderStatsTab() {
+  if (typeof Chart === 'undefined') {
+    console.error('Chart.js non charge');
+    return;
+  }
+
+  const totalGasoil = state.records.reduce((sum, r) => sum + (parseFloat(r.montant) || 0), 0);
+  const totalToll = tollState.records.reduce((sum, r) => sum + (parseFloat(r.montant) || 0), 0);
+  const totalNonRembourse = tollState.records
+    .filter(r => r.rembourse !== 'YES')
+    .reduce((sum, r) => sum + (parseFloat(r.montant) || 0), 0);
+
+  document.getElementById('statsTotalGasoil').textContent = totalGasoil.toLocaleString('fr-FR', { minimumFractionDigits: 2 }) + ' DH';
+  document.getElementById('statsTotalToll').textContent = totalToll.toLocaleString('fr-FR', { minimumFractionDigits: 2 }) + ' DH';
+  document.getElementById('statsTotalCombined').textContent = (totalGasoil + totalToll).toLocaleString('fr-FR', { minimumFractionDigits: 2 }) + ' DH';
+  document.getElementById('statsNonRembourse').textContent = totalNonRembourse.toLocaleString('fr-FR', { minimumFractionDigits: 2 }) + ' DH';
+
+  renderChartByDept();
+  renderChartByPerson();
+  renderChartByMonth();
+  renderChartRembourse();
+}
+
+const CHART_COLORS = ['#2563eb', '#059669', '#f59e0b', '#dc2626', '#7c3aed', '#0891b2', '#db2777', '#65a30d', '#ea580c', '#4f46e5'];
+
+function renderChartByDept() {
+  const deptTotals = {};
+  state.records.forEach(r => {
+    const d = r.departement || 'Non specifie';
+    deptTotals[d] = (deptTotals[d] || 0) + (parseFloat(r.montant) || 0);
+  });
+
+  const labels = Object.keys(deptTotals);
+  const data = Object.values(deptTotals);
+
+  destroyChart('byDept');
+  const ctx = document.getElementById('chartByDept');
+  if (!ctx || labels.length === 0) return;
+
+  chartInstances.byDept = new Chart(ctx, {
+    type: 'doughnut',
+    data: {
+      labels,
+      datasets: [{ data, backgroundColor: CHART_COLORS }]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { position: 'bottom', labels: { color: '#fff', font: { size: 11 } } }
+      }
+    }
+  });
+}
+
+function renderChartByPerson() {
+  const personTotals = {};
+  state.records.forEach(r => {
+    const p = r.nomPrenom || 'Inconnu';
+    personTotals[p] = (personTotals[p] || 0) + (parseFloat(r.montant) || 0);
+  });
+  tollState.records.forEach(r => {
+    const p = r.personne || 'Inconnu';
+    personTotals[p] = (personTotals[p] || 0) + (parseFloat(r.montant) || 0);
+  });
+
+  const sorted = Object.entries(personTotals).sort((a, b) => b[1] - a[1]).slice(0, 10);
+  const labels = sorted.map(e => e[0]);
+  const data = sorted.map(e => e[1]);
+
+  destroyChart('byPerson');
+  const ctx = document.getElementById('chartByPerson');
+  if (!ctx || labels.length === 0) return;
+
+  chartInstances.byPerson = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [{ label: 'Total (DH)', data, backgroundColor: '#2563eb' }]
+    },
+    options: {
+      responsive: true,
+      indexAxis: 'y',
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { ticks: { color: '#9ca3af' }, grid: { color: '#374151' } },
+        y: { ticks: { color: '#fff' }, grid: { display: false } }
+      }
+    }
+  });
+}
+
+function renderChartByMonth() {
+  const monthTotals = {};
+
+  const addToMonth = (dateStr, amount) => {
+    if (!dateStr) return;
+    const month = dateStr.slice(0, 7);
+    monthTotals[month] = (monthTotals[month] || 0) + amount;
+  };
+
+  state.records.forEach(r => addToMonth(r.date, parseFloat(r.montant) || 0));
+  tollState.records.forEach(r => addToMonth(r.date, parseFloat(r.montant) || 0));
+
+  const sortedMonths = Object.keys(monthTotals).sort();
+  const labels = sortedMonths.map(m => {
+    const [y, mo] = m.split('-');
+    const noms = ['Jan', 'Fev', 'Mar', 'Avr', 'Mai', 'Jun', 'Jul', 'Aou', 'Sep', 'Oct', 'Nov', 'Dec'];
+    return noms[parseInt(mo) - 1] + ' ' + y;
+  });
+  const data = sortedMonths.map(m => monthTotals[m]);
+
+  destroyChart('byMonth');
+  const ctx = document.getElementById('chartByMonth');
+  if (!ctx || labels.length === 0) return;
+
+  chartInstances.byMonth = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [{
+        label: 'Depenses totales (DH)',
+        data,
+        borderColor: '#2563eb',
+        backgroundColor: 'rgba(37, 99, 235, 0.15)',
+        fill: true,
+        tension: 0.3
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { ticks: { color: '#9ca3af' }, grid: { color: '#374151' } },
+        y: { ticks: { color: '#9ca3af' }, grid: { color: '#374151' } }
+      }
+    }
+  });
+}
+
+function renderChartRembourse() {
+  const rembourse = tollState.records.filter(r => r.rembourse === 'YES').reduce((s, r) => s + (parseFloat(r.montant) || 0), 0);
+  const nonRembourse = tollState.records.filter(r => r.rembourse !== 'YES').reduce((s, r) => s + (parseFloat(r.montant) || 0), 0);
+
+  destroyChart('rembourse');
+  const ctx = document.getElementById('chartRembourse');
+  if (!ctx) return;
+  if (rembourse === 0 && nonRembourse === 0) return;
+
+  chartInstances.rembourse = new Chart(ctx, {
+    type: 'pie',
+    data: {
+      labels: ['Rembourse', 'Non rembourse'],
+      datasets: [{ data: [rembourse, nonRembourse], backgroundColor: ['#059669', '#f59e0b'] }]
+    },
+    options: {
+      responsive: true,
+      plugins: { legend: { position: 'bottom', labels: { color: '#fff' } } }
+    }
+  });
+}
