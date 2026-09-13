@@ -34,6 +34,7 @@
   <nav class="tab-bar">
     <button class="tab-btn active" data-tab="gasoil">⛽ Gasoil</button>
     <button class="tab-btn" data-tab="autoroute">🛣️ Autoroute</button>
+    <button class="tab-btn" data-tab="charges">🧾 Charges</button>
     <button class="tab-btn" data-tab="stats">📊 Statistiques</button>
   </nav>
 
@@ -62,6 +63,11 @@
         <select id="filterPlateSelect" class="filter-select">
           <option value="ALL">Toutes les immatriculations</option>
         </select>
+        <select id="filterGasoilRemb" class="filter-select">
+          <option value="ALL">Tous (rembourse ou non)</option>
+          <option value="YES">Rembourse</option>
+          <option value="NO">Non rembourse</option>
+        </select>
       </div>
       <button id="btnResetFilters" class="btn-reset">🔄 Réinitialiser</button>
     </section>
@@ -76,6 +82,7 @@
               <th>Montant</th>
               <th>Dept</th>
               <th>Immatriculation</th>
+              <th>Rembourse</th>
               <th>Actions</th>
             </tr>
           </thead>
@@ -113,6 +120,7 @@
             <thead>
               <tr>
                 <th>Personne</th>
+                <th>Departement</th>
                 <th>Date</th>
                 <th>Trajet</th>
                 <th>Montant</th>
@@ -130,7 +138,52 @@
       </section>
     </div>
 
+    <div id="tabCharges" class="tab-panel">
+      <section class="action-section">
+        <button id="btnOpenScannerCharge" class="btn-primary btn-lg">📷 Scanner un Recu</button>
+        <button id="btnUploadCharge" class="btn-secondary btn-lg">📁 Importer une Photo</button>
+      </section>
+
+      <section class="filters-section">
+        <div class="filter-row">
+          <select id="filterChargeRemb" class="filter-select">
+            <option value="ALL">Tous (rembourse ou non)</option>
+            <option value="YES">Rembourse</option>
+            <option value="NO">Non rembourse</option>
+          </select>
+          <button id="btnExportCharge" class="btn-secondary">📊 Exporter Excel</button>
+        </div>
+      </section>
+
+      <section class="table-section">
+        <div class="table-container">
+          <table class="simple-table">
+            <thead>
+              <tr>
+                <th>Personne</th>
+                <th>Departement</th>
+                <th>Date</th>
+                <th>Description</th>
+                <th>Montant</th>
+                <th>Rembourse</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="chargeTableBody"></tbody>
+          </table>
+        </div>
+        <div id="chargeEmptyState" class="empty-state" style="display: none;">
+          <div class="empty-icon">🧾</div>
+          <p>Aucune charge diverse enregistree</p>
+        </div>
+      </section>
+    </div>
+
     <div id="tabStats" class="tab-panel">
+      <section class="action-section" style="grid-template-columns: 1fr;">
+        <button id="btnPrintPayment" class="btn-primary btn-lg">🖨️ Imprimer Feuille de Paiement (Non Rembourses)</button>
+      </section>
+
       <section class="stats-summary-grid">
         <div class="stat-card-pro">
           <div class="stat-card-label">Total Gasoil</div>
@@ -171,6 +224,8 @@
       </section>
     </div>
   </main>
+
+  <input type="file" id="fileInputCharge" accept="image/*,.jpg,.jpeg,.png,.heic,.heif,application/octet-stream" style="display:none;">
 
   <input type="file" id="fileInputToll" accept="image/*,.jpg,.jpeg,.png,.heic,.heif,application/octet-stream" style="display:none;">
 
@@ -236,6 +291,10 @@
           <div class="form-group">
             <label>Personne</label>
             <input type="text" id="tollInputPersonne" class="form-input" placeholder="Nom et prenom" required>
+          </div>
+          <div class="form-group">
+            <label>Departement</label>
+            <select id="tollInputDepartement" class="form-input"></select>
           </div>
           <div class="form-group">
             <label>Date <span class="auto-tag">detection auto</span></label>
@@ -307,6 +366,14 @@
             <input type="text" id="inputImmatriculation" class="form-input" required>
           </div>
           
+          <div class="form-group">
+            <label>Rembourse ?</label>
+            <select id="inputRembourseGasoil" class="form-input">
+              <option value="NO">Non rembourse</option>
+              <option value="YES">Rembourse</option>
+            </select>
+          </div>
+
           <div class="form-actions">
             <button type="button" id="btnCancelEdit" class="btn-secondary">Annuler</button>
             <button type="submit" class="btn-primary">Enregistrer</button>
@@ -335,6 +402,75 @@
     </div>
   </div>
 
+  <!-- Modal Camera Charge -->
+  <div id="cameraModalCharge" class="modal">
+    <div class="modal-overlay"></div>
+    <div class="modal-content modal-fullscreen">
+      <div class="camera-topbar">
+        <button id="btnCloseCameraModalCharge" class="btn-close-camera">&times;</button>
+        <span class="camera-title">Scanner un Recu</span>
+        <span style="width:36px;"></span>
+      </div>
+      <div class="camera-container">
+        <video id="scannerVideoCharge" class="camera-video" autoplay playsinline muted></video>
+        <div class="camera-frame"></div>
+        <div id="captureCountdownCharge" class="capture-countdown"></div>
+      </div>
+      <div class="camera-bottombar">
+        <div style="width:64px;"></div>
+        <button id="btnCapturePhotoCharge" class="btn-capture-main" aria-label="Capturer"></button>
+        <div style="width:64px;"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Edit Charge -->
+  <div id="editChargeModal" class="modal">
+    <div class="modal-overlay"></div>
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>Valider la Charge</h2>
+        <button id="btnCloseEditChargeModal" class="btn-close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <img id="editChargeImagePreview" class="preview-image" src="" alt="Recu" style="display: none;">
+        <form id="chargeForm" class="form-simple">
+          <div class="form-group">
+            <label>Personne</label>
+            <input type="text" id="chargeInputPersonne" class="form-input" placeholder="Nom et prenom" required>
+          </div>
+          <div class="form-group">
+            <label>Departement</label>
+            <select id="chargeInputDepartement" class="form-input"></select>
+          </div>
+          <div class="form-group">
+            <label>Date <span class="auto-tag">detection auto</span></label>
+            <input type="date" id="chargeInputDate" class="form-input" required>
+          </div>
+          <div class="form-group">
+            <label>Description <span class="auto-tag">detection auto</span></label>
+            <input type="text" id="chargeInputDescription" class="form-input" placeholder="ex: Repas, Parking, Fournitures">
+          </div>
+          <div class="form-group">
+            <label>Montant (MAD) <span class="auto-tag">detection auto</span></label>
+            <input type="number" id="chargeInputMontant" class="form-input" step="0.01" required>
+          </div>
+          <div class="form-group">
+            <label>Rembourse ?</label>
+            <select id="chargeInputRembourse" class="form-input">
+              <option value="NO">Non rembourse</option>
+              <option value="YES">Rembourse</option>
+            </select>
+          </div>
+          <div class="form-actions">
+            <button type="button" id="btnCancelCharge" class="btn-secondary">Annuler</button>
+            <button type="submit" class="btn-primary">Enregistrer</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
   <!-- Modal Voir Image -->
   <div id="viewImageModal" class="modal">
     <div class="modal-overlay"></div>
@@ -350,6 +486,23 @@
   <input type="file" id="fileInputSheet" accept="image/*,.jpg,.jpeg,.png,.heic,.heif,application/octet-stream" style="display:none;">
 
   <button id="btnFab" class="fab-button" onclick="document.getElementById('btnOpenScanner').click()" aria-label="Scanner">📷</button>
+
+  <div id="printPaymentSheet" class="print-payment-sheet">
+    <h2>Feuille de Paiement - Depenses Non Remboursees</h2>
+    <p id="printPaymentDate"></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Nom et Prenom</th>
+          <th>Departement</th>
+          <th>Charge</th>
+          <th>Montant (MAD)</th>
+          <th>Signature</th>
+        </tr>
+      </thead>
+      <tbody id="printPaymentBody"></tbody>
+    </table>
+  </div>
 
   <div id="toastContainer" class="toast-container"></div>
 

@@ -644,3 +644,35 @@ html, body {
   .action-section { grid-template-columns: repeat(3, 1fr); }
   .stats-summary-grid { grid-template-columns: repeat(4, 1fr); }
 }
+
+/* FEUILLE DE PAIEMENT IMPRIMABLE */
+.print-payment-sheet { display: none; }
+
+@media print {
+  body * { visibility: hidden; }
+  .print-payment-sheet, .print-payment-sheet * { visibility: visible; }
+  .print-payment-sheet {
+    display: block;
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    background: #fff;
+    color: #000;
+    padding: 24px;
+  }
+  .print-payment-sheet table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 16px;
+  }
+  .print-payment-sheet th, .print-payment-sheet td {
+    border: 1px solid #333;
+    padding: 8px;
+    text-align: left;
+    font-size: 12px;
+    color: #000;
+  }
+  .print-payment-sheet th { background: #eee; }
+  .print-payment-sheet .sig-cell { min-width: 120px; height: 40px; }
+}

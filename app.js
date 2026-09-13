@@ -163,6 +163,7 @@ function getFilteredRecords() {
     if (state.filterDept !== 'ALL' && r.departement !== state.filterDept) return false;
     if (state.filterPerson !== 'ALL' && r.nomPrenom !== state.filterPerson) return false;
     if (state.filterPlate !== 'ALL' && r.immatriculation !== state.filterPlate) return false;
+    if (state.filterGasoilRemb && state.filterGasoilRemb !== 'ALL' && r.rembourse !== state.filterGasoilRemb) return false;
     return true;
   });
 }
@@ -191,8 +192,10 @@ function renderTable() {
       <td><strong>${parseFloat(record.montant).toFixed(2)} DH</strong></td>
       <td>${escapeHtml(record.departement)}</td>
       <td>${escapeHtml(record.immatriculation || '-')}</td>
+      <td>${record.rembourse === 'YES' ? '<span style="color: var(--success);">✅ Oui</span>' : '<span style="color: var(--warning);">⏳ Non</span>'}</td>
       <td>
         <div class="table-actions">
+          <button class="action-btn" onclick="toggleGasoilRembourse('${record.id}')">🔄</button>
           <button class="action-btn" onclick="viewVoucherImage('${record.id}')">👁️</button>
           <button class="action-btn" onclick="editRecord('${record.id}')">✏️</button>
           <button class="action-btn delete" onclick="deleteRecord('${record.id}')">🗑️</button>
@@ -231,6 +234,15 @@ function setupEventListeners() {
     renderStats();
     renderTable();
   });
+
+  const filterGasoilRembEl = document.getElementById('filterGasoilRemb');
+  if (filterGasoilRembEl) {
+    filterGasoilRembEl.addEventListener('change', (e) => {
+      state.filterGasoilRemb = e.target.value;
+      renderStats();
+      renderTable();
+    });
+  }
 
   document.getElementById('btnResetFilters').addEventListener('click', () => {
     state.searchQuery = '';
@@ -527,6 +539,9 @@ function openEditModalWithData(data) {
     updateFormDepartmentDropdown();
     deptSelect.value = data.departement;
   }
+  const rembSelect = document.getElementById('inputRembourseGasoil');
+  if (rembSelect) rembSelect.value = data.rembourse || 'NO';
+
   const previewBox = document.getElementById('editModalImagePreview');
   if (data.image) {
     previewBox.src = data.image;
@@ -560,6 +575,7 @@ function saveRecordForm(e) {
   const departement = document.getElementById('inputDepartement').value;
   const kilometrage = parseInt(document.getElementById('inputKilometrage').value) || 0;
   const immatriculation = document.getElementById('inputImmatriculation').value.trim();
+  const rembourse = document.getElementById('inputRembourseGasoil') ? document.getElementById('inputRembourseGasoil').value : 'NO';
 
   if (!nomPrenom) {
     showToast("Remplissez le nom.", "warning");
@@ -594,6 +610,15 @@ function deleteRecord(id) {
     state.records = state.records.filter(r => r.id !== id);
     saveRecords();
     showToast("Bon supprimé.", "info");
+  }
+}
+
+function toggleGasoilRembourse(id) {
+  const record = state.records.find(r => r.id === id);
+  if (record) {
+    record.rembourse = record.rembourse === 'YES' ? 'NO' : 'YES';
+    saveRecords();
+    showToast(record.rembourse === 'YES' ? '✅ Marque comme rembourse' : '⏳ Marque comme non rembourse', 'info');
   }
 }
 
@@ -702,6 +727,7 @@ function renderTollTable() {
       : '<span style="color: #f59e0b;">⏳ Non</span>';
     tr.innerHTML = `
       <td>${escapeHtml(record.personne || '-')}</td>
+      <td>${escapeHtml(record.departement || '-')}</td>
       <td>${record.date}</td>
       <td>${escapeHtml(record.trajet || '-')}</td>
       <td><strong>${parseFloat(record.montant).toFixed(2)} DH</strong></td>
@@ -825,7 +851,8 @@ async function runTollExtraction(imageDataUrl) {
       montant: extracted.montant || '',
       rembourse: 'NO',
       image: imageDataUrl,
-      personne: state.lastTollPersonne || ''
+      personne: state.lastTollPersonne || '',
+      departement: state.lastTollDept || ''
     });
 
     showToast("✅ Ticket lu automatiquement !", "success");
@@ -840,11 +867,26 @@ async function runTollExtraction(imageDataUrl) {
   }
 }
 
+function updateTollDeptDropdown(selectedVal) {
+  const select = document.getElementById('tollInputDepartement');
+  if (!select) return;
+  const allDepts = Array.from(new Set([...state.departments, ...state.records.map(r => r.departement).filter(Boolean)])).sort();
+  select.innerHTML = '<option value="">-- Departement --</option>';
+  allDepts.forEach(d => {
+    const opt = document.createElement('option');
+    opt.value = d;
+    opt.textContent = d;
+    select.appendChild(opt);
+  });
+  if (selectedVal) select.value = selectedVal;
+}
+
 function openEditTollModalWithData(data) {
   tollState.currentEditingId = data.id || null;
   tollState.tempImage = data.image || null;
 
   document.getElementById('tollInputPersonne').value = data.personne || '';
+  updateTollDeptDropdown(data.departement || '');
   document.getElementById('tollInputDate').value = data.date || new Date().toISOString().split('T')[0];
   document.getElementById('tollInputTrajet').value = data.trajet || '';
   document.getElementById('tollInputMontant').value = data.montant || '';
@@ -877,6 +919,7 @@ function closeEditTollModal() {
 function saveTollForm(e) {
   e.preventDefault();
   const personne = document.getElementById('tollInputPersonne').value.trim();
+  const departement = document.getElementById('tollInputDepartement').value;
   const date = document.getElementById('tollInputDate').value;
   const trajet = document.getElementById('tollInputTrajet').value.trim();
   const montant = parseFloat(document.getElementById('tollInputMontant').value) || 0;
@@ -890,7 +933,7 @@ function saveTollForm(e) {
   const existingIndex = tollState.records.findIndex(r => r.id === tollState.currentEditingId);
   const recordObj = {
     id: tollState.currentEditingId || ("TOLL-" + Date.now().toString().slice(-6)),
-    personne, date, trajet, montant, rembourse,
+    personne, departement, date, trajet, montant, rembourse,
     image: tollState.tempImage
   };
 
@@ -901,6 +944,7 @@ function saveTollForm(e) {
   }
 
   state.lastTollPersonne = personne;
+  state.lastTollDept = departement;
   saveTollRecords();
   closeEditTollModal();
   showToast("✅ Ticket enregistre !", "success");
@@ -1165,3 +1209,411 @@ function renderChartRembourse() {
     }
   });
 }
+
+// ==================== MODULE CHARGES DIVERSES ====================
+let chargeState = {
+  records: [],
+  filterRembourse: 'ALL',
+  cameraStream: null,
+  currentEditingId: null,
+  tempImage: null,
+  countdownTimer: null
+};
+
+async function loadChargeRecords() {
+  try {
+    const existing = await idbGet('charge_records');
+    chargeState.records = (existing && Array.isArray(existing)) ? existing : [];
+  } catch (e) {
+    chargeState.records = [];
+  }
+}
+
+async function saveChargeRecords() {
+  try {
+    await idbSet('charge_records', chargeState.records);
+  } catch (e) {
+    showToast('⚠️ Erreur de sauvegarde', 'warning');
+  }
+  renderChargeTable();
+}
+
+function getFilteredChargeRecords() {
+  return chargeState.records.filter(r => {
+    if (chargeState.filterRembourse !== 'ALL' && r.rembourse !== chargeState.filterRembourse) return false;
+    return true;
+  });
+}
+
+function renderChargeTable() {
+  const tbody = document.getElementById('chargeTableBody');
+  if (!tbody) return;
+  tbody.innerHTML = '';
+  const filtered = getFilteredChargeRecords();
+
+  if (filtered.length === 0) {
+    document.getElementById('chargeEmptyState').style.display = 'block';
+    return;
+  }
+  document.getElementById('chargeEmptyState').style.display = 'none';
+
+  filtered.forEach(record => {
+    const tr = document.createElement('tr');
+    const rembBadge = record.rembourse === 'YES'
+      ? '<span style="color: var(--success);">✅ Oui</span>'
+      : '<span style="color: var(--warning);">⏳ Non</span>';
+    tr.innerHTML = `
+      <td>${escapeHtml(record.personne || '-')}</td>
+      <td>${escapeHtml(record.departement || '-')}</td>
+      <td>${record.date}</td>
+      <td>${escapeHtml(record.description || '-')}</td>
+      <td><strong>${parseFloat(record.montant).toFixed(2)} DH</strong></td>
+      <td>${rembBadge}</td>
+      <td>
+        <div class="table-actions">
+          <button class="action-btn" onclick="toggleChargeRembourse('${record.id}')">🔄</button>
+          <button class="action-btn" onclick="editChargeRecord('${record.id}')">✏️</button>
+          <button class="action-btn delete" onclick="deleteChargeRecord('${record.id}')">🗑️</button>
+        </div>
+      </td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+function toggleChargeRembourse(id) {
+  const record = chargeState.records.find(r => r.id === id);
+  if (record) {
+    record.rembourse = record.rembourse === 'YES' ? 'NO' : 'YES';
+    saveChargeRecords();
+    showToast(record.rembourse === 'YES' ? '✅ Marque comme rembourse' : '⏳ Marque comme non rembourse', 'info');
+  }
+}
+
+function deleteChargeRecord(id) {
+  if (confirm('Supprimer cette charge ?')) {
+    chargeState.records = chargeState.records.filter(r => r.id !== id);
+    saveChargeRecords();
+    showToast('Charge supprimee.', 'info');
+  }
+}
+
+function editChargeRecord(id) {
+  const record = chargeState.records.find(r => r.id === id);
+  if (record) openEditChargeModalWithData(record);
+}
+
+async function openCameraModalCharge() {
+  document.getElementById('cameraModalCharge').classList.add('active');
+  const video = document.getElementById('scannerVideoCharge');
+  try {
+    chargeState.cameraStream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: 'environment', width: { ideal: 1920 }, height: { ideal: 1080 } }
+    });
+    video.srcObject = chargeState.cameraStream;
+    video.onloadedmetadata = () => startChargeCountdown();
+  } catch (err) {
+    showToast("Impossible d'acceder a la camera.", "warning");
+  }
+}
+
+function startChargeCountdown() {
+  let count = 3;
+  const el = document.getElementById('captureCountdownCharge');
+  el.style.display = 'flex';
+  el.textContent = count;
+  chargeState.countdownTimer = setInterval(() => {
+    count--;
+    if (count <= 0) {
+      cancelChargeCountdown();
+      captureChargePhoto();
+    } else {
+      el.textContent = count;
+    }
+  }, 1000);
+}
+
+function cancelChargeCountdown() {
+  if (chargeState.countdownTimer) {
+    clearInterval(chargeState.countdownTimer);
+    chargeState.countdownTimer = null;
+  }
+  document.getElementById('captureCountdownCharge').style.display = 'none';
+}
+
+function closeCameraModalCharge() {
+  cancelChargeCountdown();
+  document.getElementById('cameraModalCharge').classList.remove('active');
+  if (chargeState.cameraStream) {
+    chargeState.cameraStream.getTracks().forEach(track => track.stop());
+    chargeState.cameraStream = null;
+  }
+}
+
+function captureChargePhoto() {
+  const video = document.getElementById('scannerVideoCharge');
+  if (!video.videoWidth) return;
+  const canvas = document.createElement('canvas');
+  canvas.width = video.videoWidth;
+  canvas.height = video.videoHeight;
+  const ctx = canvas.getContext('2d');
+  ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+  const imageDataUrl = canvas.toDataURL('image/jpeg', 0.92);
+  closeCameraModalCharge();
+  runChargeExtraction(imageDataUrl);
+}
+
+async function runChargeExtraction(imageDataUrl) {
+  chargeState.tempImage = imageDataUrl;
+  showToast("🧠 Lecture du recu en cours...", "info");
+
+  try {
+    const [header, base64Data] = imageDataUrl.split(',');
+    const mediaType = header.match(/data:(.*?);/)[1];
+
+    const response = await fetch('/api/extract-charge', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ imageBase64: base64Data, mediaType })
+    });
+
+    const extracted = await response.json();
+    if (!response.ok) throw new Error(extracted.error || 'Erreur extraction');
+
+    openEditChargeModalWithData({
+      id: "CHG-" + Date.now().toString().slice(-6),
+      date: extracted.date || '',
+      description: extracted.description || '',
+      montant: extracted.montant || '',
+      rembourse: 'NO',
+      image: imageDataUrl,
+      personne: state.lastChargePersonne || '',
+      departement: state.lastChargeDept || ''
+    });
+
+    showToast("✅ Recu lu automatiquement !", "success");
+  } catch (error) {
+    console.error("Erreur extraction charge:", error);
+    showToast("⚠️ Extraction echouee, remplissez manuellement.", "warning");
+    openEditChargeModalWithData({
+      id: "CHG-" + Date.now().toString().slice(-6),
+      image: imageDataUrl,
+      rembourse: 'NO'
+    });
+  }
+}
+
+function updateChargeDeptDropdown(selectedVal) {
+  const select = document.getElementById('chargeInputDepartement');
+  if (!select) return;
+  const allDepts = Array.from(new Set([...state.departments, ...state.records.map(r => r.departement).filter(Boolean)])).sort();
+  select.innerHTML = '<option value="">-- Departement --</option>';
+  allDepts.forEach(d => {
+    const opt = document.createElement('option');
+    opt.value = d;
+    opt.textContent = d;
+    select.appendChild(opt);
+  });
+  if (selectedVal) select.value = selectedVal;
+}
+
+function openEditChargeModalWithData(data) {
+  chargeState.currentEditingId = data.id || null;
+  chargeState.tempImage = data.image || null;
+
+  document.getElementById('chargeInputPersonne').value = data.personne || '';
+  updateChargeDeptDropdown(data.departement || '');
+  document.getElementById('chargeInputDate').value = data.date || new Date().toISOString().split('T')[0];
+  document.getElementById('chargeInputDescription').value = data.description || '';
+  document.getElementById('chargeInputMontant').value = data.montant || '';
+  document.getElementById('chargeInputRembourse').value = data.rembourse || 'NO';
+
+  const previewBox = document.getElementById('editChargeImagePreview');
+  if (data.image) {
+    previewBox.src = data.image;
+    previewBox.style.display = 'block';
+  } else {
+    previewBox.style.display = 'none';
+  }
+
+  document.getElementById('editChargeModal').classList.add('active');
+}
+
+function closeEditChargeModal() {
+  document.getElementById('editChargeModal').classList.remove('active');
+  chargeState.currentEditingId = null;
+  chargeState.tempImage = null;
+  document.getElementById('chargeInputPersonne').value = '';
+  document.getElementById('chargeInputDate').value = '';
+  document.getElementById('chargeInputDescription').value = '';
+  document.getElementById('chargeInputMontant').value = '';
+  const previewBox = document.getElementById('editChargeImagePreview');
+  previewBox.src = '';
+  previewBox.style.display = 'none';
+}
+
+function saveChargeForm(e) {
+  e.preventDefault();
+  const personne = document.getElementById('chargeInputPersonne').value.trim();
+  const departement = document.getElementById('chargeInputDepartement').value;
+  const date = document.getElementById('chargeInputDate').value;
+  const description = document.getElementById('chargeInputDescription').value.trim();
+  const montant = parseFloat(document.getElementById('chargeInputMontant').value) || 0;
+  const rembourse = document.getElementById('chargeInputRembourse').value;
+
+  if (!personne) {
+    showToast("Veuillez renseigner le nom de la personne.", "warning");
+    return;
+  }
+
+  const existingIndex = chargeState.records.findIndex(r => r.id === chargeState.currentEditingId);
+  const recordObj = {
+    id: chargeState.currentEditingId || ("CHG-" + Date.now().toString().slice(-6)),
+    personne, departement, date, description, montant, rembourse,
+    image: chargeState.tempImage
+  };
+
+  if (existingIndex >= 0) {
+    chargeState.records[existingIndex] = recordObj;
+  } else {
+    chargeState.records.unshift(recordObj);
+  }
+
+  state.lastChargePersonne = personne;
+  state.lastChargeDept = departement;
+  saveChargeRecords();
+  closeEditChargeModal();
+  showToast("✅ Charge enregistree !", "success");
+}
+
+function exportChargeToExcel() {
+  const filtered = getFilteredChargeRecords();
+  if (filtered.length === 0) {
+    showToast("Aucune donnee.", "warning");
+    return;
+  }
+  const totalAmount = filtered.reduce((sum, r) => sum + (parseFloat(r.montant) || 0), 0);
+  let html = `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
+    <head><meta charset="utf-8"><style>
+      table { border-collapse: collapse; width: 100%; font-family: Arial; font-size: 11pt; }
+      th { background-color: #1f2937; color: #fff; font-weight: bold; border: 1px solid #475569; padding: 10px; }
+      td { border: 1px solid #cbd5e1; padding: 8px; }
+      .num { text-align: right; }
+    </style></head><body>
+      <div style="font-size:16pt;font-weight:bold;margin-bottom:10px;">Rapport Charges Diverses</div>
+      <table><thead><tr><th>Personne</th><th>Departement</th><th>Date</th><th>Description</th><th>Montant (MAD)</th><th>Rembourse</th></tr></thead><tbody>`;
+  filtered.forEach(r => {
+    html += `<tr><td>${escapeHtml(r.personne || '')}</td><td>${escapeHtml(r.departement || '')}</td><td>${r.date}</td><td>${escapeHtml(r.description || '')}</td><td class="num">${parseFloat(r.montant).toFixed(2)}</td><td>${r.rembourse === 'YES' ? 'Oui' : 'Non'}</td></tr>`;
+  });
+  html += `<tr style="background-color:#f1f5f9;font-weight:bold;"><td colspan="4" style="text-align:right;">TOTAL :</td><td class="num" style="color:#059669;"><b>${totalAmount.toFixed(2)}</b></td><td></td></tr></tbody></table></body></html>`;
+  const blob = new Blob([html], { type: "application/vnd.ms-excel;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.setAttribute("href", url);
+  link.setAttribute("download", `charges_diverses_${new Date().toISOString().split('T')[0]}.xls`);
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  showToast("📊 Excel exporte !", "success");
+}
+
+function setupChargeEventListeners() {
+  document.getElementById('btnOpenScannerCharge').addEventListener('click', openCameraModalCharge);
+  document.getElementById('btnCloseCameraModalCharge').addEventListener('click', closeCameraModalCharge);
+  document.getElementById('btnCapturePhotoCharge').addEventListener('click', () => {
+    cancelChargeCountdown();
+    captureChargePhoto();
+  });
+
+  document.getElementById('btnUploadCharge').addEventListener('click', () => {
+    document.getElementById('fileInputCharge').click();
+  });
+  document.getElementById('fileInputCharge').addEventListener('change', (e) => {
+    if (e.target.files && e.target.files[0]) {
+      const reader = new FileReader();
+      reader.onload = (ev) => runChargeExtraction(ev.target.result);
+      reader.readAsDataURL(e.target.files[0]);
+      e.target.value = '';
+    }
+  });
+
+  document.getElementById('chargeForm').addEventListener('submit', saveChargeForm);
+  document.getElementById('btnCloseEditChargeModal').addEventListener('click', closeEditChargeModal);
+  document.getElementById('btnCancelCharge').addEventListener('click', closeEditChargeModal);
+
+  document.getElementById('filterChargeRemb').addEventListener('change', (e) => {
+    chargeState.filterRembourse = e.target.value;
+    renderChargeTable();
+  });
+
+  document.getElementById('btnExportCharge').addEventListener('click', exportChargeToExcel);
+}
+
+// ==================== IMPRESSION FEUILLE DE PAIEMENT ====================
+function printPaymentSheet() {
+  const nonRembGasoil = state.records
+    .filter(r => r.rembourse !== 'YES')
+    .map(r => ({ nom: r.nomPrenom, dept: r.departement, charge: 'Gasoil', montant: parseFloat(r.montant) || 0 }));
+
+  const nonRembToll = tollState.records
+    .filter(r => r.rembourse !== 'YES')
+    .map(r => ({ nom: r.personne, dept: r.departement, charge: 'Autoroute' + (r.trajet ? ' (' + r.trajet + ')' : ''), montant: parseFloat(r.montant) || 0 }));
+
+  const nonRembCharge = chargeState.records
+    .filter(r => r.rembourse !== 'YES')
+    .map(r => ({ nom: r.personne, dept: r.departement, charge: r.description || 'Charge diverse', montant: parseFloat(r.montant) || 0 }));
+
+  const all = [...nonRembGasoil, ...nonRembToll, ...nonRembCharge].filter(r => r.nom && r.nom.trim());
+
+  if (all.length === 0) {
+    showToast("Aucune depense non remboursee a imprimer.", "info");
+    return;
+  }
+
+  // Regrouper par personne pour ne pas en oublier et voir le total par personne
+  const grouped = {};
+  all.forEach(r => {
+    const key = r.nom.trim();
+    if (!grouped[key]) grouped[key] = [];
+    grouped[key].push(r);
+  });
+
+  const tbody = document.getElementById('printPaymentBody');
+  tbody.innerHTML = '';
+  let grandTotal = 0;
+
+  Object.keys(grouped).sort().forEach(nom => {
+    grouped[nom].forEach((r, idx) => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td>${idx === 0 ? escapeHtml(nom) : ''}</td>
+        <td>${escapeHtml(r.dept || '-')}</td>
+        <td>${escapeHtml(r.charge)}</td>
+        <td>${r.montant.toFixed(2)} DH</td>
+        <td class="sig-cell"></td>
+      `;
+      tbody.appendChild(tr);
+      grandTotal += r.montant;
+    });
+  });
+
+  const totalRow = document.createElement('tr');
+  totalRow.innerHTML = `<td colspan="3" style="text-align:right; font-weight:bold;">TOTAL A PAYER :</td><td style="font-weight:bold;">${grandTotal.toFixed(2)} DH</td><td></td>`;
+  tbody.appendChild(totalRow);
+
+  document.getElementById('printPaymentDate').textContent = 'Genere le ' + new Date().toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' }) + ' - ' + Object.keys(grouped).length + ' personne(s) concernee(s)';
+
+  window.print();
+}
+
+// Init module Charges + bouton impression
+document.addEventListener('DOMContentLoaded', async () => {
+  await loadChargeRecords();
+  setupChargeEventListeners();
+  renderChargeTable();
+
+  const printBtn = document.getElementById('btnPrintPayment');
+  if (printBtn) {
+    printBtn.addEventListener('click', printPaymentSheet);
+  }
+});
