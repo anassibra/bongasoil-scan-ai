@@ -180,8 +180,32 @@
     </div>
 
     <div id="tabStats" class="tab-panel">
+      <section class="filters-section">
+        <h3 class="chart-title" style="margin-bottom: 12px;">📋 Feuille de Remboursement</h3>
+        <div class="filter-row">
+          <select id="paymentFilterPersonne" class="filter-select">
+            <option value="ALL">Toutes les personnes</option>
+          </select>
+          <select id="paymentFilterDept" class="filter-select">
+            <option value="ALL">Tous les departements</option>
+          </select>
+        </div>
+        <div class="filter-row" style="grid-template-columns: 1fr;">
+          <select id="paymentFilterStatut" class="filter-select">
+            <option value="NO" selected>Non rembourses uniquement</option>
+            <option value="YES">Rembourses uniquement</option>
+            <option value="ALL">Tous (rembourses + non rembourses)</option>
+          </select>
+        </div>
+      </section>
+
+      <section class="action-section">
+        <button id="btnPrintPayment" class="btn-primary btn-lg">🖨️ Imprimer</button>
+        <button id="btnDownloadPayment" class="btn-secondary btn-lg">⬇️ Telecharger PDF</button>
+      </section>
+
       <section class="action-section" style="grid-template-columns: 1fr;">
-        <button id="btnPrintPayment" class="btn-primary btn-lg">🖨️ Imprimer Feuille de Paiement (Non Rembourses)</button>
+        <button id="btnImportSignedSheet" class="btn-secondary btn-lg">📷 Scanner / Importer Feuille Signee (Mettre a jour statuts)</button>
       </section>
 
       <section class="stats-summary-grid">
@@ -224,6 +248,8 @@
       </section>
     </div>
   </main>
+
+  <input type="file" id="fileInputSignedSheet" accept="image/*,.jpg,.jpeg,.png,.heic,.heif,application/octet-stream" style="display:none;">
 
   <input type="file" id="fileInputCharge" accept="image/*,.jpg,.jpeg,.png,.heic,.heif,application/octet-stream" style="display:none;">
 
@@ -488,7 +514,7 @@
   <button id="btnFab" class="fab-button" onclick="document.getElementById('btnOpenScanner').click()" aria-label="Scanner">📷</button>
 
   <div id="printPaymentSheet" class="print-payment-sheet">
-    <h2>Feuille de Paiement - Depenses Non Remboursees</h2>
+    <h2>Feuille de Remboursement</h2>
     <p id="printPaymentDate"></p>
     <table>
       <thead>
@@ -504,9 +530,29 @@
     </table>
   </div>
 
+  <!-- Modal Revision Feuille Signee -->
+  <div id="signedSheetModal" class="modal">
+    <div class="modal-overlay"></div>
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>Mettre a jour les remboursements</h2>
+        <button id="btnCloseSignedSheetModal" class="btn-close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p id="signedSheetStatusText" style="color: var(--text-muted); font-size: 13px; margin-bottom: 12px;"></p>
+        <div id="signedSheetList"></div>
+        <div class="form-actions" style="margin-top: 16px;">
+          <button type="button" id="btnCancelSignedSheet" class="btn-secondary">Annuler</button>
+          <button type="button" id="btnConfirmSignedSheet" class="btn-primary">Confirmer les remboursements</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <div id="toastContainer" class="toast-container"></div>
 
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
   <script src="sample_data.js"></script>
   <script src="app.js"></script>
   <script>

@@ -321,6 +321,84 @@ app.post('/api/extract-charge', async (req, res) => {
   }
 });
 
+app.post('/api/extract-signed-sheet', async (req, res) => {
+  try {
+    const { imageBase64, mediaType } = req.body;
+    if (!imageBase64) return res.status(400).json({ error: 'imageBase64 manquant' });
+    if (!API_KEY) return res.status(500).json({ error: 'Cle API non configuree sur le serveur' });
+
+    const prompt = "Tu regardes la photo d'un tableau imprime intitule Feuille de Remboursement, avec des colonnes Nom et Prenom, Departement, Charge, Montant, Signature.\n" +
+      "Pour CHAQUE ligne du tableau, determine si la case Signature contient une signature manuscrite (un trait, une griffe, un paraphe, peu importe la forme) ou si elle est restee VIDE.\n" +
+      "Reponds UNIQUEMENT avec un tableau JSON valide, rien d'autre, pas de markdown :\n" +
+      "[\n" +
+      "  {\n" +
+      '    "nom": "nom et prenom exact tel qu ecrit sur la ligne (texte imprime)",\n' +
+      '    "signe": true ou false selon si la case Signature de cette ligne contient une marque manuscrite\n' +
+      "  }\n" +
+      "]\n" +
+      "Une entree par ligne du tableau (hors ligne TOTAL). Ne mets AUCUN texte avant ou apres le tableau JSON.";
+
+    const payload = JSON.stringify({
+      model: "claude-sonnet-4-6",
+      max_tokens: 2000,
+      messages: [{
+        role: "user",
+        content: [
+          { type: "image", source: { type: "base64", media_type: mediaType || "image/jpeg", data: imageBase64 } },
+          { type: "text", text: prompt }
+        ]
+      }]
+    });
+
+    const options = {
+      hostname: 'api.anthropic.com',
+      path: '/v1/messages',
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': API_KEY,
+        'anthropic-version': '2023-06-01',
+        'Content-Length': Buffer.byteLength(payload)
+      }
+    };
+
+    const apiReq = https.request(options, (apiRes) => {
+      let data = '';
+      apiRes.on('data', (chunk) => data += chunk);
+      apiRes.on('end', () => {
+        try {
+          const parsed = JSON.parse(data);
+          if (parsed.error) {
+            console.error('Erreur API Anthropic:', parsed.error);
+            return res.status(500).json({ error: parsed.error.message || 'Erreur API' });
+          }
+          const textBlock = parsed.content?.find(c => c.type === 'text');
+          if (!textBlock) return res.status(500).json({ error: 'Reponse IA invalide' });
+
+          const cleanText = textBlock.text.replace(/```json|```/g, '').trim();
+          const extracted = JSON.parse(cleanText);
+          res.json(Array.isArray(extracted) ? extracted : []);
+        } catch (e) {
+          console.error('Erreur parsing signed sheet:', e, data);
+          res.status(500).json({ error: 'Erreur de lecture de la reponse IA' });
+        }
+      });
+    });
+
+    apiReq.on('error', (e) => {
+      console.error('Erreur requete:', e);
+      res.status(500).json({ error: 'Erreur de connexion a l API' });
+    });
+
+    apiReq.write(payload);
+    apiReq.end();
+
+  } catch (error) {
+    console.error('Erreur serveur signed sheet:', error);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'index.html'));
 });

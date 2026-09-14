@@ -1550,29 +1550,76 @@ function setupChargeEventListeners() {
 }
 
 // ==================== IMPRESSION FEUILLE DE PAIEMENT ====================
-function printPaymentSheet() {
-  const nonRembGasoil = state.records
-    .filter(r => r.rembourse !== 'YES')
-    .map(r => ({ nom: r.nomPrenom, dept: r.departement, charge: 'Gasoil', montant: parseFloat(r.montant) || 0 }));
+// ==================== FEUILLE DE REMBOURSEMENT ====================
+function getAllNonGroupedEntries() {
+  const gasoil = state.records.map(r => ({
+    id: r.id, source: 'gasoil', nom: r.nomPrenom, dept: r.departement,
+    charge: 'Gasoil', montant: parseFloat(r.montant) || 0, rembourse: r.rembourse === 'YES'
+  }));
+  const toll = tollState.records.map(r => ({
+    id: r.id, source: 'toll', nom: r.personne, dept: r.departement,
+    charge: 'Autoroute' + (r.trajet ? ' (' + r.trajet + ')' : ''), montant: parseFloat(r.montant) || 0, rembourse: r.rembourse === 'YES'
+  }));
+  const charges = chargeState.records.map(r => ({
+    id: r.id, source: 'charge', nom: r.personne, dept: r.departement,
+    charge: r.description || 'Charge diverse', montant: parseFloat(r.montant) || 0, rembourse: r.rembourse === 'YES'
+  }));
+  return [...gasoil, ...toll, ...charges].filter(r => r.nom && r.nom.trim());
+}
 
-  const nonRembToll = tollState.records
-    .filter(r => r.rembourse !== 'YES')
-    .map(r => ({ nom: r.personne, dept: r.departement, charge: 'Autoroute' + (r.trajet ? ' (' + r.trajet + ')' : ''), montant: parseFloat(r.montant) || 0 }));
+function updatePaymentFilterDropdowns() {
+  const all = getAllNonGroupedEntries();
+  const names = Array.from(new Set(all.map(r => r.nom.trim()))).sort();
+  const depts = Array.from(new Set(all.map(r => r.dept).filter(Boolean))).sort();
 
-  const nonRembCharge = chargeState.records
-    .filter(r => r.rembourse !== 'YES')
-    .map(r => ({ nom: r.personne, dept: r.departement, charge: r.description || 'Charge diverse', montant: parseFloat(r.montant) || 0 }));
+  const personneSel = document.getElementById('paymentFilterPersonne');
+  const deptSel = document.getElementById('paymentFilterDept');
+  if (personneSel) {
+    const curVal = personneSel.value;
+    personneSel.innerHTML = '<option value="ALL">Toutes les personnes</option>';
+    names.forEach(n => {
+      const opt = document.createElement('option');
+      opt.value = n; opt.textContent = n;
+      personneSel.appendChild(opt);
+    });
+    if (names.includes(curVal)) personneSel.value = curVal;
+  }
+  if (deptSel) {
+    const curVal = deptSel.value;
+    deptSel.innerHTML = '<option value="ALL">Tous les departements</option>';
+    depts.forEach(d => {
+      const opt = document.createElement('option');
+      opt.value = d; opt.textContent = d;
+      deptSel.appendChild(opt);
+    });
+    if (depts.includes(curVal)) deptSel.value = curVal;
+  }
+}
 
-  const all = [...nonRembGasoil, ...nonRembToll, ...nonRembCharge].filter(r => r.nom && r.nom.trim());
+function getFilteredPaymentEntries() {
+  const personneFilter = document.getElementById('paymentFilterPersonne').value;
+  const deptFilter = document.getElementById('paymentFilterDept').value;
+  const statutFilter = document.getElementById('paymentFilterStatut').value;
 
-  if (all.length === 0) {
-    showToast("Aucune depense non remboursee a imprimer.", "info");
-    return;
+  return getAllNonGroupedEntries().filter(r => {
+    if (personneFilter !== 'ALL' && r.nom.trim() !== personneFilter) return false;
+    if (deptFilter !== 'ALL' && r.dept !== deptFilter) return false;
+    if (statutFilter === 'NO' && r.rembourse) return false;
+    if (statutFilter === 'YES' && !r.rembourse) return false;
+    return true;
+  });
+}
+
+function buildPaymentSheetDOM() {
+  const filtered = getFilteredPaymentEntries();
+
+  if (filtered.length === 0) {
+    showToast("Aucune depense ne correspond a ces filtres.", "info");
+    return null;
   }
 
-  // Regrouper par personne pour ne pas en oublier et voir le total par personne
   const grouped = {};
-  all.forEach(r => {
+  filtered.forEach(r => {
     const key = r.nom.trim();
     if (!grouped[key]) grouped[key] = [];
     grouped[key].push(r);
@@ -1598,22 +1645,254 @@ function printPaymentSheet() {
   });
 
   const totalRow = document.createElement('tr');
-  totalRow.innerHTML = `<td colspan="3" style="text-align:right; font-weight:bold;">TOTAL A PAYER :</td><td style="font-weight:bold;">${grandTotal.toFixed(2)} DH</td><td></td>`;
+  totalRow.innerHTML = `<td colspan="3" style="text-align:right; font-weight:bold;">TOTAL :</td><td style="font-weight:bold;">${grandTotal.toFixed(2)} DH</td><td></td>`;
   tbody.appendChild(totalRow);
 
-  document.getElementById('printPaymentDate').textContent = 'Genere le ' + new Date().toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' }) + ' - ' + Object.keys(grouped).length + ' personne(s) concernee(s)';
+  const statutFilter = document.getElementById('paymentFilterStatut').value;
+  const statutLabel = statutFilter === 'NO' ? 'Non rembourses' : statutFilter === 'YES' ? 'Rembourses' : 'Tous statuts';
+  document.getElementById('printPaymentDate').textContent = 'Genere le ' + new Date().toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' }) + ' - ' + statutLabel + ' - ' + Object.keys(grouped).length + ' personne(s)';
 
+  return { grouped, grandTotal };
+}
+
+function printPaymentSheet() {
+  const result = buildPaymentSheetDOM();
+  if (!result) return;
   window.print();
 }
 
-// Init module Charges + bouton impression
+function downloadPaymentSheetPDF() {
+  const result = buildPaymentSheetDOM();
+  if (!result) return;
+
+  if (typeof window.jspdf === 'undefined') {
+    showToast("Erreur: bibliotheque PDF non chargee.", "warning");
+    return;
+  }
+
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF();
+
+  doc.setFontSize(16);
+  doc.text('Feuille de Remboursement', 14, 18);
+  doc.setFontSize(9);
+  doc.setTextColor(100);
+  doc.text(document.getElementById('printPaymentDate').textContent, 14, 25);
+
+  const rows = [];
+  const bodyRows = document.getElementById('printPaymentBody').querySelectorAll('tr');
+  bodyRows.forEach(tr => {
+    const cells = Array.from(tr.querySelectorAll('td')).map(td => td.textContent.trim());
+    rows.push(cells);
+  });
+
+  let y = 34;
+  const colX = [14, 70, 105, 150, 175];
+  doc.setFontSize(9);
+  doc.setTextColor(255);
+  doc.setFillColor(31, 41, 55);
+  doc.rect(14, y - 5, 182, 7, 'F');
+  doc.setTextColor(255);
+  doc.text('Nom', colX[0] + 1, y);
+  doc.text('Departement', colX[1] + 1, y);
+  doc.text('Charge', colX[2] + 1, y);
+  doc.text('Montant', colX[3] + 1, y);
+  doc.text('Signature', colX[4] + 1, y);
+  y += 8;
+
+  doc.setTextColor(20);
+  rows.forEach((row, idx) => {
+    if (y > 275) {
+      doc.addPage();
+      y = 20;
+    }
+    doc.setDrawColor(220);
+    doc.line(14, y + 2, 196, y + 2);
+    doc.text(String(row[0] || ''), colX[0] + 1, y);
+    doc.text(String(row[1] || ''), colX[1] + 1, y);
+    doc.text(String(row[2] || ''), colX[2] + 1, y, { maxWidth: 43 });
+    doc.text(String(row[3] || ''), colX[3] + 1, y);
+    doc.rect(colX[4], y - 4, 20, 6);
+    y += 8;
+  });
+
+  doc.save('feuille_remboursement_' + new Date().toISOString().split('T')[0] + '.pdf');
+  showToast("📄 PDF telecharge !", "success");
+}
+
+// ==================== SCAN FEUILLE SIGNEE ====================
+let signedSheetResults = [];
+
+async function runSignedSheetExtraction(imageDataUrl) {
+  document.getElementById('signedSheetModal').classList.add('active');
+  document.getElementById('signedSheetStatusText').textContent = "Analyse de la feuille en cours...";
+  document.getElementById('signedSheetList').innerHTML = '';
+  document.getElementById('btnConfirmSignedSheet').style.display = 'none';
+
+  try {
+    const [header, base64Data] = imageDataUrl.split(',');
+    const mediaType = header.match(/data:(.*?);/)[1];
+
+    const response = await fetch('/api/extract-signed-sheet', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ imageBase64: base64Data, mediaType })
+    });
+
+    const extracted = await response.json();
+    if (!response.ok) throw new Error(extracted.error || 'Erreur extraction');
+
+    const allNames = Array.from(new Set(getAllNonGroupedEntries().map(r => r.nom.trim())));
+
+    signedSheetResults = extracted.map(item => {
+      const matched = allNames.find(n => n.toLowerCase() === (item.nom || '').trim().toLowerCase());
+      return {
+        nomDetecte: item.nom || '',
+        nomMatched: matched || '',
+        signe: !!item.signe
+      };
+    });
+
+    if (signedSheetResults.length === 0) {
+      document.getElementById('signedSheetStatusText').textContent = "Aucune ligne detectee. Reessayez avec une photo plus nette.";
+      return;
+    }
+
+    document.getElementById('signedSheetStatusText').textContent = signedSheetResults.length + " ligne(s) detectee(s). Verifiez avant de confirmer.";
+    renderSignedSheetList();
+    document.getElementById('btnConfirmSignedSheet').style.display = 'block';
+  } catch (error) {
+    console.error("Erreur signed sheet:", error);
+    document.getElementById('signedSheetStatusText').textContent = "Erreur d'extraction. Reessayez avec une photo plus nette.";
+  }
+}
+
+function renderSignedSheetList() {
+  const container = document.getElementById('signedSheetList');
+  container.innerHTML = '';
+  const allNames = Array.from(new Set(getAllNonGroupedEntries().map(r => r.nom.trim()))).sort();
+
+  signedSheetResults.forEach((item, idx) => {
+    const div = document.createElement('div');
+    div.className = 'batch-item';
+    const nameOptions = allNames.map(n => '<option value="' + escapeHtml(n) + '"' + (n === item.nomMatched ? ' selected' : '') + '>' + escapeHtml(n) + '</option>').join('');
+
+    div.innerHTML = `
+      <div class="batch-item-header">
+        <span class="batch-item-title">${escapeHtml(item.nomDetecte || 'Nom non lu')}</span>
+        <button type="button" class="batch-item-remove" onclick="removeSignedSheetItem(${idx})">🗑️</button>
+      </div>
+      <div class="batch-item-fields">
+        <select class="full-width" onchange="updateSignedSheetField(${idx}, 'nomMatched', this.value)">
+          <option value="">-- Associer a --</option>
+          ${nameOptions}
+        </select>
+        <label style="display:flex; align-items:center; gap:8px; grid-column: 1 / -1; font-size: 13px;">
+          <input type="checkbox" ${item.signe ? 'checked' : ''} onchange="updateSignedSheetField(${idx}, 'signe', this.checked)">
+          Signe (marquer comme rembourse)
+        </label>
+      </div>
+    `;
+    container.appendChild(div);
+  });
+}
+
+function updateSignedSheetField(idx, field, value) {
+  signedSheetResults[idx][field] = value;
+}
+
+function removeSignedSheetItem(idx) {
+  signedSheetResults.splice(idx, 1);
+  renderSignedSheetList();
+}
+
+async function confirmSignedSheetUpdate() {
+  let updatedCount = 0;
+
+  signedSheetResults.forEach(item => {
+    if (!item.signe || !item.nomMatched) return;
+    const name = item.nomMatched.trim().toLowerCase();
+
+    state.records.forEach(r => {
+      if ((r.nomPrenom || '').trim().toLowerCase() === name && r.rembourse !== 'YES') {
+        r.rembourse = 'YES';
+        updatedCount++;
+      }
+    });
+    tollState.records.forEach(r => {
+      if ((r.personne || '').trim().toLowerCase() === name && r.rembourse !== 'YES') {
+        r.rembourse = 'YES';
+        updatedCount++;
+      }
+    });
+    chargeState.records.forEach(r => {
+      if ((r.personne || '').trim().toLowerCase() === name && r.rembourse !== 'YES') {
+        r.rembourse = 'YES';
+        updatedCount++;
+      }
+    });
+  });
+
+  await saveRecords();
+  await saveTollRecords();
+  await saveChargeRecords();
+
+  closeSignedSheetModal();
+  showToast("✅ " + updatedCount + " depense(s) marquee(s) comme remboursee(s) !", "success");
+}
+
+function closeSignedSheetModal() {
+  document.getElementById('signedSheetModal').classList.remove('active');
+  signedSheetResults = [];
+}
+
+// Init module Charges + feuille de remboursement + scan feuille signee
 document.addEventListener('DOMContentLoaded', async () => {
   await loadChargeRecords();
   setupChargeEventListeners();
   renderChargeTable();
 
   const printBtn = document.getElementById('btnPrintPayment');
-  if (printBtn) {
-    printBtn.addEventListener('click', printPaymentSheet);
+  if (printBtn) printBtn.addEventListener('click', printPaymentSheet);
+
+  const downloadBtn = document.getElementById('btnDownloadPayment');
+  if (downloadBtn) downloadBtn.addEventListener('click', downloadPaymentSheetPDF);
+
+  ['paymentFilterPersonne', 'paymentFilterDept', 'paymentFilterStatut'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener('change', updatePaymentFilterDropdowns);
+  });
+
+  const importSignedBtn = document.getElementById('btnImportSignedSheet');
+  if (importSignedBtn) {
+    importSignedBtn.addEventListener('click', () => {
+      updatePaymentFilterDropdowns();
+      document.getElementById('fileInputSignedSheet').click();
+    });
   }
+  const fileInputSigned = document.getElementById('fileInputSignedSheet');
+  if (fileInputSigned) {
+    fileInputSigned.addEventListener('change', (e) => {
+      if (e.target.files && e.target.files[0]) {
+        const reader = new FileReader();
+        reader.onload = (ev) => runSignedSheetExtraction(ev.target.result);
+        reader.readAsDataURL(e.target.files[0]);
+        e.target.value = '';
+      }
+    });
+  }
+
+  const closeSignedBtn = document.getElementById('btnCloseSignedSheetModal');
+  if (closeSignedBtn) closeSignedBtn.addEventListener('click', closeSignedSheetModal);
+  const cancelSignedBtn = document.getElementById('btnCancelSignedSheet');
+  if (cancelSignedBtn) cancelSignedBtn.addEventListener('click', closeSignedSheetModal);
+  const confirmSignedBtn = document.getElementById('btnConfirmSignedSheet');
+  if (confirmSignedBtn) confirmSignedBtn.addEventListener('click', confirmSignedSheetUpdate);
+
+  // Initialiser les dropdowns de filtres au chargement de l'onglet stats
+  document.querySelectorAll('.tab-btn').forEach(btn => {
+    if (btn.dataset.tab === 'stats') {
+      btn.addEventListener('click', updatePaymentFilterDropdowns);
+    }
+  });
 });
