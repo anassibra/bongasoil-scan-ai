@@ -102,6 +102,9 @@
         <button id="btnOpenScannerToll" class="btn-primary btn-lg">📷 Scanner un Ticket</button>
         <button id="btnUploadToll" class="btn-secondary btn-lg">📁 Importer une Photo</button>
       </section>
+      <section class="action-section" style="grid-template-columns: 1fr;">
+        <button id="btnImportSheetToll" class="btn-secondary btn-lg">📋 Importer Feuille (Plusieurs Tickets)</button>
+      </section>
 
       <section class="filters-section">
         <div class="filter-row">
@@ -142,6 +145,9 @@
       <section class="action-section">
         <button id="btnOpenScannerCharge" class="btn-primary btn-lg">📷 Scanner un Recu</button>
         <button id="btnUploadCharge" class="btn-secondary btn-lg">📁 Importer une Photo</button>
+      </section>
+      <section class="action-section" style="grid-template-columns: 1fr;">
+        <button id="btnImportSheetCharge" class="btn-secondary btn-lg">📋 Importer Feuille (Plusieurs Recus)</button>
       </section>
 
       <section class="filters-section">
@@ -544,6 +550,47 @@
         <div class="form-actions" style="margin-top: 16px;">
           <button type="button" id="btnCancelSignedSheet" class="btn-secondary">Annuler</button>
           <button type="button" id="btnConfirmSignedSheet" class="btn-primary">Confirmer les remboursements</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <input type="file" id="fileInputSheetToll" accept="image/*,.jpg,.jpeg,.png,.heic,.heif,application/octet-stream" style="display:none;">
+  <input type="file" id="fileInputSheetCharge" accept="image/*,.jpg,.jpeg,.png,.heic,.heif,application/octet-stream" style="display:none;">
+
+  <!-- Modal Revision Multi-Tickets Autoroute -->
+  <div id="tollBatchReviewModal" class="modal">
+    <div class="modal-overlay"></div>
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>Tickets detectes sur la feuille</h2>
+        <button id="btnCloseTollBatchModal" class="btn-close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p id="tollBatchStatusText" style="color: var(--text-muted); font-size: 13px; margin-bottom: 12px;"></p>
+        <div id="tollBatchList"></div>
+        <div class="form-actions" style="margin-top: 16px;">
+          <button type="button" id="btnCancelTollBatch" class="btn-secondary">Annuler</button>
+          <button type="button" id="btnSaveTollBatch" class="btn-primary">Enregistrer tous les tickets</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Revision Multi-Recus Charges -->
+  <div id="chargeBatchReviewModal" class="modal">
+    <div class="modal-overlay"></div>
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>Recus detectes sur la feuille</h2>
+        <button id="btnCloseChargeBatchModal" class="btn-close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p id="chargeBatchStatusText" style="color: var(--text-muted); font-size: 13px; margin-bottom: 12px;"></p>
+        <div id="chargeBatchList"></div>
+        <div class="form-actions" style="margin-top: 16px;">
+          <button type="button" id="btnCancelChargeBatch" class="btn-secondary">Annuler</button>
+          <button type="button" id="btnSaveChargeBatch" class="btn-primary">Enregistrer tous les recus</button>
         </div>
       </div>
     </div>

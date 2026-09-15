@@ -399,6 +399,144 @@ app.post('/api/extract-signed-sheet', async (req, res) => {
   }
 });
 
+app.post('/api/extract-toll-batch', async (req, res) => {
+  try {
+    const { imageBase64, mediaType } = req.body;
+    if (!imageBase64) return res.status(400).json({ error: 'imageBase64 manquant' });
+    if (!API_KEY) return res.status(500).json({ error: 'Cle API non configuree sur le serveur' });
+
+    const prompt = "Cette image montre une feuille sur laquelle PLUSIEURS tickets de peage autoroute marocains (ADM) sont colles ou poses cote a cote. Ce sont des infos IMPRIMEES.\n" +
+      "Identifie CHAQUE ticket separement. Reponds UNIQUEMENT avec un tableau JSON valide, rien d'autre, pas de markdown :\n" +
+      "[\n" +
+      "  {\n" +
+      '    "date": "date au format AAAA-MM-JJ",\n' +
+      '    "montant": nombre decimal du montant en MAD,\n' +
+      '    "trajet": "gare entree - gare sortie si visibles, sinon vide"\n' +
+      "  }\n" +
+      "]\n" +
+      "Un objet par ticket detecte. Si un champ est illisible, mets une chaine vide (ou 0). Ne mets AUCUN texte avant ou apres le tableau JSON.";
+
+    const payload = JSON.stringify({
+      model: "claude-sonnet-4-6",
+      max_tokens: 3000,
+      messages: [{
+        role: "user",
+        content: [
+          { type: "image", source: { type: "base64", media_type: mediaType || "image/jpeg", data: imageBase64 } },
+          { type: "text", text: prompt }
+        ]
+      }]
+    });
+
+    const options = {
+      hostname: 'api.anthropic.com',
+      path: '/v1/messages',
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': API_KEY,
+        'anthropic-version': '2023-06-01',
+        'Content-Length': Buffer.byteLength(payload)
+      }
+    };
+
+    const apiReq = https.request(options, (apiRes) => {
+      let data = '';
+      apiRes.on('data', (chunk) => data += chunk);
+      apiRes.on('end', () => {
+        try {
+          const parsed = JSON.parse(data);
+          if (parsed.error) return res.status(500).json({ error: parsed.error.message || 'Erreur API' });
+          const textBlock = parsed.content?.find(c => c.type === 'text');
+          if (!textBlock) return res.status(500).json({ error: 'Reponse IA invalide' });
+          const cleanText = textBlock.text.replace(/```json|```/g, '').trim();
+          const extracted = JSON.parse(cleanText);
+          res.json(Array.isArray(extracted) ? extracted : []);
+        } catch (e) {
+          console.error('Erreur parsing toll batch:', e, data);
+          res.status(500).json({ error: 'Erreur de lecture de la reponse IA' });
+        }
+      });
+    });
+
+    apiReq.on('error', (e) => res.status(500).json({ error: 'Erreur de connexion a l API' }));
+    apiReq.write(payload);
+    apiReq.end();
+  } catch (error) {
+    console.error('Erreur serveur toll batch:', error);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+app.post('/api/extract-charge-batch', async (req, res) => {
+  try {
+    const { imageBase64, mediaType } = req.body;
+    if (!imageBase64) return res.status(400).json({ error: 'imageBase64 manquant' });
+    if (!API_KEY) return res.status(500).json({ error: 'Cle API non configuree sur le serveur' });
+
+    const prompt = "Cette image montre une feuille sur laquelle PLUSIEURS recus/tickets de depenses professionnelles (repas, parking, fournitures, hotel, etc.) sont colles ou poses cote a cote. Ce sont des infos IMPRIMEES en general.\n" +
+      "Identifie CHAQUE recu separement. Reponds UNIQUEMENT avec un tableau JSON valide, rien d'autre, pas de markdown :\n" +
+      "[\n" +
+      "  {\n" +
+      '    "date": "date au format AAAA-MM-JJ",\n' +
+      '    "montant": nombre decimal du montant total paye en MAD,\n' +
+      '    "description": "brève description du type de depense (ex: Repas, Parking, Fournitures bureau, Hotel)"\n' +
+      "  }\n" +
+      "]\n" +
+      "Un objet par recu detecte. Si un champ est illisible, mets une chaine vide (ou 0). Ne mets AUCUN texte avant ou apres le tableau JSON.";
+
+    const payload = JSON.stringify({
+      model: "claude-sonnet-4-6",
+      max_tokens: 3000,
+      messages: [{
+        role: "user",
+        content: [
+          { type: "image", source: { type: "base64", media_type: mediaType || "image/jpeg", data: imageBase64 } },
+          { type: "text", text: prompt }
+        ]
+      }]
+    });
+
+    const options = {
+      hostname: 'api.anthropic.com',
+      path: '/v1/messages',
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': API_KEY,
+        'anthropic-version': '2023-06-01',
+        'Content-Length': Buffer.byteLength(payload)
+      }
+    };
+
+    const apiReq = https.request(options, (apiRes) => {
+      let data = '';
+      apiRes.on('data', (chunk) => data += chunk);
+      apiRes.on('end', () => {
+        try {
+          const parsed = JSON.parse(data);
+          if (parsed.error) return res.status(500).json({ error: parsed.error.message || 'Erreur API' });
+          const textBlock = parsed.content?.find(c => c.type === 'text');
+          if (!textBlock) return res.status(500).json({ error: 'Reponse IA invalide' });
+          const cleanText = textBlock.text.replace(/```json|```/g, '').trim();
+          const extracted = JSON.parse(cleanText);
+          res.json(Array.isArray(extracted) ? extracted : []);
+        } catch (e) {
+          console.error('Erreur parsing charge batch:', e, data);
+          res.status(500).json({ error: 'Erreur de lecture de la reponse IA' });
+        }
+      });
+    });
+
+    apiReq.on('error', (e) => res.status(500).json({ error: 'Erreur de connexion a l API' }));
+    apiReq.write(payload);
+    apiReq.end();
+  } catch (error) {
+    console.error('Erreur serveur charge batch:', error);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'index.html'));
 });

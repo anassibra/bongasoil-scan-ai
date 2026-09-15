@@ -1896,3 +1896,276 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   });
 });
+
+// ==================== IMPORT FEUILLE MULTI-TICKETS AUTOROUTE ====================
+let tollBatchResults = [];
+
+async function runTollBatchExtraction(imageDataUrl) {
+  document.getElementById('tollBatchReviewModal').classList.add('active');
+  document.getElementById('tollBatchStatusText').textContent = "Analyse de la feuille en cours...";
+  document.getElementById('tollBatchList').innerHTML = '';
+  document.getElementById('btnSaveTollBatch').style.display = 'none';
+
+  try {
+    const [header, base64Data] = imageDataUrl.split(',');
+    const mediaType = header.match(/data:(.*?);/)[1];
+
+    const response = await fetch('/api/extract-toll-batch', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ imageBase64: base64Data, mediaType })
+    });
+
+    const extractedList = await response.json();
+    if (!response.ok) throw new Error(extractedList.error || 'Erreur extraction');
+
+    tollBatchResults = extractedList.map((item, idx) => ({
+      tempId: 'tollbatch-' + idx,
+      personne: state.lastTollPersonne || '',
+      departement: state.lastTollDept || '',
+      date: item.date || '',
+      trajet: item.trajet || '',
+      montant: item.montant || ''
+    }));
+
+    if (tollBatchResults.length === 0) {
+      document.getElementById('tollBatchStatusText').textContent = "Aucun ticket detecte. Reessayez avec une photo plus nette.";
+      return;
+    }
+
+    document.getElementById('tollBatchStatusText').textContent = tollBatchResults.length + " ticket(s) detecte(s). Verifiez/corrigez avant d'enregistrer.";
+    renderTollBatchList();
+    document.getElementById('btnSaveTollBatch').style.display = 'block';
+  } catch (error) {
+    console.error("Erreur toll batch:", error);
+    document.getElementById('tollBatchStatusText').textContent = "Erreur d'extraction. Reessayez avec une photo plus nette.";
+  }
+}
+
+function renderTollBatchList() {
+  const container = document.getElementById('tollBatchList');
+  container.innerHTML = '';
+  const allDepts = Array.from(new Set([...state.departments, ...state.records.map(r => r.departement).filter(Boolean)])).sort();
+
+  tollBatchResults.forEach((item, idx) => {
+    const div = document.createElement('div');
+    div.className = 'batch-item';
+    const deptOptions = allDepts.map(d => '<option value="' + escapeHtml(d) + '"' + (d === item.departement ? ' selected' : '') + '>' + escapeHtml(d) + '</option>').join('');
+
+    div.innerHTML = `
+      <div class="batch-item-header">
+        <span class="batch-item-title">Ticket #${idx + 1}</span>
+        <button type="button" class="batch-item-remove" onclick="removeTollBatchItem(${idx})">🗑️</button>
+      </div>
+      <div class="batch-item-fields">
+        <input type="text" class="full-width" placeholder="Personne" value="${escapeHtml(item.personne)}" oninput="updateTollBatchField(${idx}, 'personne', this.value)">
+        <select onchange="updateTollBatchField(${idx}, 'departement', this.value)">
+          <option value="">-- Departement --</option>
+          ${deptOptions}
+        </select>
+        <input type="date" value="${item.date}" oninput="updateTollBatchField(${idx}, 'date', this.value)">
+        <input type="number" placeholder="Montant" value="${item.montant}" oninput="updateTollBatchField(${idx}, 'montant', this.value)">
+        <input type="text" class="full-width" placeholder="Trajet" value="${escapeHtml(item.trajet)}" oninput="updateTollBatchField(${idx}, 'trajet', this.value)">
+      </div>
+    `;
+    container.appendChild(div);
+  });
+}
+
+function updateTollBatchField(idx, field, value) {
+  tollBatchResults[idx][field] = value;
+}
+
+function removeTollBatchItem(idx) {
+  tollBatchResults.splice(idx, 1);
+  renderTollBatchList();
+  document.getElementById('tollBatchStatusText').textContent = tollBatchResults.length + " ticket(s) a enregistrer.";
+}
+
+async function saveTollBatchResults() {
+  let savedCount = 0;
+  for (const item of tollBatchResults) {
+    if (!item.personne || !item.personne.trim()) continue;
+    tollState.records.unshift({
+      id: "TOLL-" + Date.now().toString().slice(-6) + "-" + savedCount,
+      personne: item.personne.trim(),
+      departement: item.departement || '',
+      date: item.date || new Date().toISOString().split('T')[0],
+      trajet: (item.trajet || '').trim(),
+      montant: parseFloat(item.montant) || 0,
+      rembourse: 'NO',
+      image: null
+    });
+    savedCount++;
+  }
+  await saveTollRecords();
+  closeTollBatchModal();
+  showToast("🎉 " + savedCount + " ticket(s) enregistre(s) !", "success");
+}
+
+function closeTollBatchModal() {
+  document.getElementById('tollBatchReviewModal').classList.remove('active');
+  tollBatchResults = [];
+}
+
+// ==================== IMPORT FEUILLE MULTI-RECUS CHARGES ====================
+let chargeBatchResults = [];
+
+async function runChargeBatchExtraction(imageDataUrl) {
+  document.getElementById('chargeBatchReviewModal').classList.add('active');
+  document.getElementById('chargeBatchStatusText').textContent = "Analyse de la feuille en cours...";
+  document.getElementById('chargeBatchList').innerHTML = '';
+  document.getElementById('btnSaveChargeBatch').style.display = 'none';
+
+  try {
+    const [header, base64Data] = imageDataUrl.split(',');
+    const mediaType = header.match(/data:(.*?);/)[1];
+
+    const response = await fetch('/api/extract-charge-batch', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ imageBase64: base64Data, mediaType })
+    });
+
+    const extractedList = await response.json();
+    if (!response.ok) throw new Error(extractedList.error || 'Erreur extraction');
+
+    chargeBatchResults = extractedList.map((item, idx) => ({
+      tempId: 'chargebatch-' + idx,
+      personne: state.lastChargePersonne || '',
+      departement: state.lastChargeDept || '',
+      date: item.date || '',
+      description: item.description || '',
+      montant: item.montant || ''
+    }));
+
+    if (chargeBatchResults.length === 0) {
+      document.getElementById('chargeBatchStatusText').textContent = "Aucun recu detecte. Reessayez avec une photo plus nette.";
+      return;
+    }
+
+    document.getElementById('chargeBatchStatusText').textContent = chargeBatchResults.length + " recu(s) detecte(s). Verifiez/corrigez avant d'enregistrer.";
+    renderChargeBatchList();
+    document.getElementById('btnSaveChargeBatch').style.display = 'block';
+  } catch (error) {
+    console.error("Erreur charge batch:", error);
+    document.getElementById('chargeBatchStatusText').textContent = "Erreur d'extraction. Reessayez avec une photo plus nette.";
+  }
+}
+
+function renderChargeBatchList() {
+  const container = document.getElementById('chargeBatchList');
+  container.innerHTML = '';
+  const allDepts = Array.from(new Set([...state.departments, ...state.records.map(r => r.departement).filter(Boolean)])).sort();
+
+  chargeBatchResults.forEach((item, idx) => {
+    const div = document.createElement('div');
+    div.className = 'batch-item';
+    const deptOptions = allDepts.map(d => '<option value="' + escapeHtml(d) + '"' + (d === item.departement ? ' selected' : '') + '>' + escapeHtml(d) + '</option>').join('');
+
+    div.innerHTML = `
+      <div class="batch-item-header">
+        <span class="batch-item-title">Recu #${idx + 1}</span>
+        <button type="button" class="batch-item-remove" onclick="removeChargeBatchItem(${idx})">🗑️</button>
+      </div>
+      <div class="batch-item-fields">
+        <input type="text" class="full-width" placeholder="Personne" value="${escapeHtml(item.personne)}" oninput="updateChargeBatchField(${idx}, 'personne', this.value)">
+        <select onchange="updateChargeBatchField(${idx}, 'departement', this.value)">
+          <option value="">-- Departement --</option>
+          ${deptOptions}
+        </select>
+        <input type="date" value="${item.date}" oninput="updateChargeBatchField(${idx}, 'date', this.value)">
+        <input type="number" placeholder="Montant" value="${item.montant}" oninput="updateChargeBatchField(${idx}, 'montant', this.value)">
+        <input type="text" class="full-width" placeholder="Description" value="${escapeHtml(item.description)}" oninput="updateChargeBatchField(${idx}, 'description', this.value)">
+      </div>
+    `;
+    container.appendChild(div);
+  });
+}
+
+function updateChargeBatchField(idx, field, value) {
+  chargeBatchResults[idx][field] = value;
+}
+
+function removeChargeBatchItem(idx) {
+  chargeBatchResults.splice(idx, 1);
+  renderChargeBatchList();
+  document.getElementById('chargeBatchStatusText').textContent = chargeBatchResults.length + " recu(s) a enregistrer.";
+}
+
+async function saveChargeBatchResults() {
+  let savedCount = 0;
+  for (const item of chargeBatchResults) {
+    if (!item.personne || !item.personne.trim()) continue;
+    chargeState.records.unshift({
+      id: "CHG-" + Date.now().toString().slice(-6) + "-" + savedCount,
+      personne: item.personne.trim(),
+      departement: item.departement || '',
+      date: item.date || new Date().toISOString().split('T')[0],
+      description: (item.description || '').trim(),
+      montant: parseFloat(item.montant) || 0,
+      rembourse: 'NO',
+      image: null
+    });
+    savedCount++;
+  }
+  await saveChargeRecords();
+  closeChargeBatchModal();
+  showToast("🎉 " + savedCount + " recu(s) enregistre(s) !", "success");
+}
+
+function closeChargeBatchModal() {
+  document.getElementById('chargeBatchReviewModal').classList.remove('active');
+  chargeBatchResults = [];
+}
+
+// Init evenements batch Autoroute + Charges
+document.addEventListener('DOMContentLoaded', () => {
+  const btnImportTollSheet = document.getElementById('btnImportSheetToll');
+  if (btnImportTollSheet) {
+    btnImportTollSheet.addEventListener('click', () => {
+      document.getElementById('fileInputSheetToll').click();
+    });
+  }
+  const fileInputSheetToll = document.getElementById('fileInputSheetToll');
+  if (fileInputSheetToll) {
+    fileInputSheetToll.addEventListener('change', (e) => {
+      if (e.target.files && e.target.files[0]) {
+        const reader = new FileReader();
+        reader.onload = (ev) => runTollBatchExtraction(ev.target.result);
+        reader.readAsDataURL(e.target.files[0]);
+        e.target.value = '';
+      }
+    });
+  }
+  const btnCloseTollBatch = document.getElementById('btnCloseTollBatchModal');
+  if (btnCloseTollBatch) btnCloseTollBatch.addEventListener('click', closeTollBatchModal);
+  const btnCancelTollBatch = document.getElementById('btnCancelTollBatch');
+  if (btnCancelTollBatch) btnCancelTollBatch.addEventListener('click', closeTollBatchModal);
+  const btnSaveTollBatch = document.getElementById('btnSaveTollBatch');
+  if (btnSaveTollBatch) btnSaveTollBatch.addEventListener('click', saveTollBatchResults);
+
+  const btnImportChargeSheet = document.getElementById('btnImportSheetCharge');
+  if (btnImportChargeSheet) {
+    btnImportChargeSheet.addEventListener('click', () => {
+      document.getElementById('fileInputSheetCharge').click();
+    });
+  }
+  const fileInputSheetCharge = document.getElementById('fileInputSheetCharge');
+  if (fileInputSheetCharge) {
+    fileInputSheetCharge.addEventListener('change', (e) => {
+      if (e.target.files && e.target.files[0]) {
+        const reader = new FileReader();
+        reader.onload = (ev) => runChargeBatchExtraction(ev.target.result);
+        reader.readAsDataURL(e.target.files[0]);
+        e.target.value = '';
+      }
+    });
+  }
+  const btnCloseChargeBatch = document.getElementById('btnCloseChargeBatchModal');
+  if (btnCloseChargeBatch) btnCloseChargeBatch.addEventListener('click', closeChargeBatchModal);
+  const btnCancelChargeBatch = document.getElementById('btnCancelChargeBatch');
+  if (btnCancelChargeBatch) btnCancelChargeBatch.addEventListener('click', closeChargeBatchModal);
+  const btnSaveChargeBatch = document.getElementById('btnSaveChargeBatch');
+  if (btnSaveChargeBatch) btnSaveChargeBatch.addEventListener('click', saveChargeBatchResults);
+});
