@@ -652,7 +652,7 @@ html, body {
   body * { visibility: hidden; }
   .print-payment-sheet, .print-payment-sheet * { visibility: visible; }
   .print-payment-sheet {
-    display: block;
+    display: block !important;
     position: absolute;
     top: 0;
     left: 0;
