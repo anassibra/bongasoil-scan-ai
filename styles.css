@@ -635,7 +635,8 @@ html, body {
 
 /* ===== PRINT ===== */
 @media print {
-  .app-header, .tab-bar, .action-section, .filters-section, .fab-button { display: none; }
+  body > *:not(#printPaymentSheet) { display: none !important; }
+  #printPaymentSheet { display: none; }
 }
 
 /* ===== TABLET / DESKTOP ===== */

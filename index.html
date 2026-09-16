@@ -214,6 +214,21 @@
         <button id="btnImportSignedSheet" class="btn-secondary btn-lg">📷 Scanner / Importer Feuille Signee (Mettre a jour statuts)</button>
       </section>
 
+      <section class="filters-section">
+        <h3 class="chart-title" style="margin-bottom: 12px;">🔍 Filtrer les Statistiques</h3>
+        <div class="filter-row">
+          <select id="statsFilterDept" class="filter-select">
+            <option value="ALL">Tous les departements</option>
+          </select>
+          <select id="statsFilterPeriod" class="filter-select">
+            <option value="ALL">Toute la periode</option>
+            <option value="30">30 derniers jours</option>
+            <option value="90">3 derniers mois</option>
+            <option value="365">12 derniers mois</option>
+          </select>
+        </div>
+      </section>
+
       <section class="stats-summary-grid">
         <div class="stat-card-pro">
           <div class="stat-card-label">Total Gasoil</div>
@@ -251,6 +266,26 @@
       <section class="chart-section">
         <h3 class="chart-title">🛣️ Autoroute : Rembourse vs Non Rembourse</h3>
         <canvas id="chartRembourse" height="220"></canvas>
+      </section>
+
+      <section class="chart-section">
+        <h3 class="chart-title">⛽ Consommation Gasoil par Personne</h3>
+        <p style="color: var(--text-muted); font-size: 12px; margin-bottom: 12px;">Base sur le kilometrage du premier et dernier bon de chaque personne. Cout moyen en DH/km (pas de L/100km car la quantite de carburant n'est pas saisie).</p>
+        <div class="table-container">
+          <table class="simple-table">
+            <thead>
+              <tr>
+                <th>Personne</th>
+                <th>1er Km</th>
+                <th>Dernier Km</th>
+                <th>Distance</th>
+                <th>Depense Totale</th>
+                <th>Cout / Km</th>
+              </tr>
+            </thead>
+            <tbody id="consumptionTableBody"></tbody>
+          </table>
+        </div>
       </section>
     </div>
   </main>

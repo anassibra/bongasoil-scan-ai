@@ -1055,9 +1055,11 @@ function renderStatsTab() {
     return;
   }
 
-  const totalGasoil = state.records.reduce((sum, r) => sum + (parseFloat(r.montant) || 0), 0);
-  const totalToll = tollState.records.reduce((sum, r) => sum + (parseFloat(r.montant) || 0), 0);
-  const totalNonRembourse = tollState.records
+  const filtered = getStatsFilteredData();
+
+  const totalGasoil = filtered.gasoil.reduce((sum, r) => sum + (parseFloat(r.montant) || 0), 0);
+  const totalToll = filtered.toll.reduce((sum, r) => sum + (parseFloat(r.montant) || 0), 0);
+  const totalNonRembourse = filtered.toll
     .filter(r => r.rembourse !== 'YES')
     .reduce((sum, r) => sum + (parseFloat(r.montant) || 0), 0);
 
@@ -1066,17 +1068,60 @@ function renderStatsTab() {
   document.getElementById('statsTotalCombined').textContent = (totalGasoil + totalToll).toLocaleString('fr-FR', { minimumFractionDigits: 2 }) + ' DH';
   document.getElementById('statsNonRembourse').textContent = totalNonRembourse.toLocaleString('fr-FR', { minimumFractionDigits: 2 }) + ' DH';
 
-  renderChartByDept();
-  renderChartByPerson();
-  renderChartByMonth();
-  renderChartRembourse();
+  renderChartByDept(filtered);
+  renderChartByPerson(filtered);
+  renderChartByMonth(filtered);
+  renderChartRembourse(filtered);
+  renderConsumptionTable(filtered);
+}
+
+function getStatsFilteredData() {
+  const deptFilter = document.getElementById('statsFilterDept') ? document.getElementById('statsFilterDept').value : 'ALL';
+  const periodFilter = document.getElementById('statsFilterPeriod') ? document.getElementById('statsFilterPeriod').value : 'ALL';
+
+  let cutoffDate = null;
+  if (periodFilter !== 'ALL') {
+    cutoffDate = new Date();
+    cutoffDate.setDate(cutoffDate.getDate() - parseInt(periodFilter));
+  }
+
+  const matchDept = (dept) => deptFilter === 'ALL' || dept === deptFilter;
+  const matchPeriod = (dateStr) => {
+    if (!cutoffDate || !dateStr) return true;
+    return new Date(dateStr) >= cutoffDate;
+  };
+
+  return {
+    gasoil: state.records.filter(r => matchDept(r.departement) && matchPeriod(r.date)),
+    toll: tollState.records.filter(r => matchDept(r.departement) && matchPeriod(r.date)),
+    charges: chargeState.records.filter(r => matchDept(r.departement) && matchPeriod(r.date))
+  };
+}
+
+function updateStatsFilterDropdown() {
+  const select = document.getElementById('statsFilterDept');
+  if (!select) return;
+  const curVal = select.value;
+  const allDepts = Array.from(new Set([
+    ...state.departments,
+    ...state.records.map(r => r.departement).filter(Boolean),
+    ...tollState.records.map(r => r.departement).filter(Boolean),
+    ...chargeState.records.map(r => r.departement).filter(Boolean)
+  ])).sort();
+  select.innerHTML = '<option value="ALL">Tous les departements</option>';
+  allDepts.forEach(d => {
+    const opt = document.createElement('option');
+    opt.value = d; opt.textContent = d;
+    select.appendChild(opt);
+  });
+  if (allDepts.includes(curVal)) select.value = curVal;
 }
 
 const CHART_COLORS = ['#0ea5e9', '#059669', '#d97706', '#dc2626', '#6366f1', '#0891b2', '#db2777', '#65a30d', '#ea580c', '#4f46e5'];
 
-function renderChartByDept() {
+function renderChartByDept(filtered) {
   const deptTotals = {};
-  state.records.forEach(r => {
+  filtered.gasoil.forEach(r => {
     const d = r.departement || 'Non specifie';
     deptTotals[d] = (deptTotals[d] || 0) + (parseFloat(r.montant) || 0);
   });
@@ -1103,13 +1148,17 @@ function renderChartByDept() {
   });
 }
 
-function renderChartByPerson() {
+function renderChartByPerson(filtered) {
   const personTotals = {};
-  state.records.forEach(r => {
+  filtered.gasoil.forEach(r => {
     const p = r.nomPrenom || 'Inconnu';
     personTotals[p] = (personTotals[p] || 0) + (parseFloat(r.montant) || 0);
   });
-  tollState.records.forEach(r => {
+  filtered.toll.forEach(r => {
+    const p = r.personne || 'Inconnu';
+    personTotals[p] = (personTotals[p] || 0) + (parseFloat(r.montant) || 0);
+  });
+  filtered.charges.forEach(r => {
     const p = r.personne || 'Inconnu';
     personTotals[p] = (personTotals[p] || 0) + (parseFloat(r.montant) || 0);
   });
@@ -1140,7 +1189,7 @@ function renderChartByPerson() {
   });
 }
 
-function renderChartByMonth() {
+function renderChartByMonth(filtered) {
   const monthTotals = {};
 
   const addToMonth = (dateStr, amount) => {
@@ -1149,8 +1198,9 @@ function renderChartByMonth() {
     monthTotals[month] = (monthTotals[month] || 0) + amount;
   };
 
-  state.records.forEach(r => addToMonth(r.date, parseFloat(r.montant) || 0));
-  tollState.records.forEach(r => addToMonth(r.date, parseFloat(r.montant) || 0));
+  filtered.gasoil.forEach(r => addToMonth(r.date, parseFloat(r.montant) || 0));
+  filtered.toll.forEach(r => addToMonth(r.date, parseFloat(r.montant) || 0));
+  filtered.charges.forEach(r => addToMonth(r.date, parseFloat(r.montant) || 0));
 
   const sortedMonths = Object.keys(monthTotals).sort();
   const labels = sortedMonths.map(m => {
@@ -1188,9 +1238,9 @@ function renderChartByMonth() {
   });
 }
 
-function renderChartRembourse() {
-  const rembourse = tollState.records.filter(r => r.rembourse === 'YES').reduce((s, r) => s + (parseFloat(r.montant) || 0), 0);
-  const nonRembourse = tollState.records.filter(r => r.rembourse !== 'YES').reduce((s, r) => s + (parseFloat(r.montant) || 0), 0);
+function renderChartRembourse(filtered) {
+  const rembourse = filtered.toll.filter(r => r.rembourse === 'YES').reduce((s, r) => s + (parseFloat(r.montant) || 0), 0);
+  const nonRembourse = filtered.toll.filter(r => r.rembourse !== 'YES').reduce((s, r) => s + (parseFloat(r.montant) || 0), 0);
 
   destroyChart('rembourse');
   const ctx = document.getElementById('chartRembourse');
@@ -1207,6 +1257,56 @@ function renderChartRembourse() {
       responsive: true,
       plugins: { legend: { position: 'bottom', labels: { color: '#fff' } } }
     }
+  });
+}
+
+function renderConsumptionTable(filtered) {
+  const tbody = document.getElementById('consumptionTableBody');
+  if (!tbody) return;
+  tbody.innerHTML = '';
+
+  const byPerson = {};
+  filtered.gasoil.forEach(r => {
+    const p = r.nomPrenom || 'Inconnu';
+    if (!byPerson[p]) byPerson[p] = [];
+    if (r.date && r.kilometrage) byPerson[p].push(r);
+  });
+
+  const rows = [];
+  Object.keys(byPerson).forEach(p => {
+    const records = byPerson[p].slice().sort((a, b) => new Date(a.date) - new Date(b.date));
+    if (records.length < 2) return;
+
+    const first = records[0];
+    const last = records[records.length - 1];
+    const firstKm = parseInt(first.kilometrage) || 0;
+    const lastKm = parseInt(last.kilometrage) || 0;
+    const distance = lastKm - firstKm;
+    if (distance <= 0) return;
+
+    const totalSpend = records.reduce((sum, r) => sum + (parseFloat(r.montant) || 0), 0);
+    const costPerKm = totalSpend / distance;
+
+    rows.push({ personne: p, firstKm, lastKm, distance, totalSpend, costPerKm });
+  });
+
+  if (rows.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color: var(--text-muted); padding: 24px;">Pas assez de donnees (minimum 2 bons avec kilometrage par personne)</td></tr>';
+    return;
+  }
+
+  rows.sort((a, b) => b.costPerKm - a.costPerKm);
+  rows.forEach(r => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td><strong>${escapeHtml(r.personne)}</strong></td>
+      <td>${r.firstKm.toLocaleString('fr-FR')} km</td>
+      <td>${r.lastKm.toLocaleString('fr-FR')} km</td>
+      <td>${r.distance.toLocaleString('fr-FR')} km</td>
+      <td>${r.totalSpend.toFixed(2)} DH</td>
+      <td><strong>${r.costPerKm.toFixed(2)} DH/km</strong></td>
+    `;
+    tbody.appendChild(tr);
   });
 }
 
@@ -1892,9 +1992,17 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Initialiser les dropdowns de filtres au chargement de l'onglet stats
   document.querySelectorAll('.tab-btn').forEach(btn => {
     if (btn.dataset.tab === 'stats') {
-      btn.addEventListener('click', updatePaymentFilterDropdowns);
+      btn.addEventListener('click', () => {
+        updatePaymentFilterDropdowns();
+        updateStatsFilterDropdown();
+      });
     }
   });
+
+  const statsDeptEl = document.getElementById('statsFilterDept');
+  if (statsDeptEl) statsDeptEl.addEventListener('change', renderStatsTab);
+  const statsPeriodEl = document.getElementById('statsFilterPeriod');
+  if (statsPeriodEl) statsPeriodEl.addEventListener('change', renderStatsTab);
 });
 
 // ==================== IMPORT FEUILLE MULTI-TICKETS AUTOROUTE ====================
