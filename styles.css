@@ -1,16 +1,16 @@
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
 :root {
-  --bg: #0f1419;
-  --surface: #171d26;
-  --surface-2: #1f2733;
-  --border: #2c3644;
-  --text: #eef1f5;
-  --text-muted: #8a94a3;
-  --primary: #0ea5e9;
-  --primary-dark: #0284c7;
+  --bg: #f4f6f9;
+  --surface: #ffffff;
+  --surface-2: #f1f4f8;
+  --border: #dde3ec;
+  --text: #111827;
+  --text-muted: #6b7280;
+  --primary: #2563eb;
+  --primary-dark: #1d4ed8;
   --success: #059669;
-  --warning: #d97706;
+  --warning: #b45309;
   --danger: #dc2626;
   --radius: 14px;
   --radius-sm: 10px;
@@ -578,8 +578,8 @@ html, body {
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 8px;
-  color: #fff !important;
-  -webkit-text-fill-color: #fff !important;
+  color: var(--text) !important;
+  -webkit-text-fill-color: var(--text) !important;
   font-size: 12.5px;
 }
 
@@ -616,7 +616,8 @@ html, body {
 
 .stat-card-pro.highlight .stat-card-label { color: rgba(255,255,255,0.85); }
 
-.stat-card-value { font-size: 19px; font-weight: 700; color: #fff; }
+.stat-card-value { font-size: 19px; font-weight: 700; color: var(--text); }
+.stat-card-pro.highlight .stat-card-value { color: #fff; }
 
 .chart-section {
   background: var(--surface);
