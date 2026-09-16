@@ -270,7 +270,15 @@
       </section>
 
       <section class="chart-section">
-        <h3 class="chart-title">👤 Depenses par Personne (Top 10, Gasoil + Autoroute)</h3>
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; margin-bottom:14px;">
+          <h3 class="chart-title" id="chartByPersonTitle" style="margin-bottom:0;">👤 Depenses par Personne (Top 10)</h3>
+          <select id="statsFilterSource" class="filter-select" style="width:auto; padding:8px 10px; font-size:12px;">
+            <option value="ALL">Gasoil + Autoroute + Charges</option>
+            <option value="gasoil">Gasoil uniquement</option>
+            <option value="toll">Autoroute uniquement</option>
+            <option value="charge">Charges uniquement</option>
+          </select>
+        </div>
         <canvas id="chartByPerson" height="220"></canvas>
       </section>
 

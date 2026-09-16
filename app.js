@@ -1198,19 +1198,33 @@ function renderChartByDept(filtered) {
 }
 
 function renderChartByPerson(filtered) {
+  const sourceFilter = document.getElementById('statsFilterSource') ? document.getElementById('statsFilterSource').value : 'ALL';
   const personTotals = {};
-  filtered.gasoil.forEach(r => {
-    const p = r.nomPrenom || 'Inconnu';
-    personTotals[p] = (personTotals[p] || 0) + (parseFloat(r.montant) || 0);
-  });
-  filtered.toll.forEach(r => {
-    const p = r.personne || 'Inconnu';
-    personTotals[p] = (personTotals[p] || 0) + (parseFloat(r.montant) || 0);
-  });
-  filtered.charges.forEach(r => {
-    const p = r.personne || 'Inconnu';
-    personTotals[p] = (personTotals[p] || 0) + (parseFloat(r.montant) || 0);
-  });
+
+  if (sourceFilter === 'ALL' || sourceFilter === 'gasoil') {
+    filtered.gasoil.forEach(r => {
+      const p = r.nomPrenom || 'Inconnu';
+      personTotals[p] = (personTotals[p] || 0) + (parseFloat(r.montant) || 0);
+    });
+  }
+  if (sourceFilter === 'ALL' || sourceFilter === 'toll') {
+    filtered.toll.forEach(r => {
+      const p = r.personne || 'Inconnu';
+      personTotals[p] = (personTotals[p] || 0) + (parseFloat(r.montant) || 0);
+    });
+  }
+  if (sourceFilter === 'ALL' || sourceFilter === 'charge') {
+    filtered.charges.forEach(r => {
+      const p = r.personne || 'Inconnu';
+      personTotals[p] = (personTotals[p] || 0) + (parseFloat(r.montant) || 0);
+    });
+  }
+
+  const titleEl = document.getElementById('chartByPersonTitle');
+  if (titleEl) {
+    const labelMap = { ALL: 'Gasoil + Autoroute + Charges', gasoil: 'Gasoil', toll: 'Autoroute', charge: 'Charges' };
+    titleEl.textContent = '👤 Depenses par Personne (Top 10, ' + labelMap[sourceFilter] + ')';
+  }
 
   const sorted = Object.entries(personTotals).sort((a, b) => b[1] - a[1]).slice(0, 10);
   const labels = sorted.map(e => e[0]);
@@ -2101,6 +2115,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   if (statsDeptEl) statsDeptEl.addEventListener('change', renderStatsTab);
   const statsPeriodEl = document.getElementById('statsFilterPeriod');
   if (statsPeriodEl) statsPeriodEl.addEventListener('change', renderStatsTab);
+  const statsSourceEl = document.getElementById('statsFilterSource');
+  if (statsSourceEl) statsSourceEl.addEventListener('change', renderStatsTab);
 });
 
 // ==================== IMPORT FEUILLE MULTI-TICKETS AUTOROUTE ====================
