@@ -677,6 +677,8 @@ function showToast(message, type = "info") {
 let tollState = {
   records: [],
   filterRembourse: 'ALL',
+  filterPersonne: 'ALL',
+  filterDept: 'ALL',
   cameraStream: null,
   currentEditingId: null,
   tempImage: null,
@@ -698,14 +700,45 @@ async function saveTollRecords() {
   } catch (e) {
     showToast('⚠️ Erreur de sauvegarde', 'warning');
   }
+  updateTollFilterDropdowns();
   renderTollTable();
 }
 
 function getFilteredTollRecords() {
   return tollState.records.filter(r => {
     if (tollState.filterRembourse !== 'ALL' && r.rembourse !== tollState.filterRembourse) return false;
+    if (tollState.filterPersonne && tollState.filterPersonne !== 'ALL' && r.personne !== tollState.filterPersonne) return false;
+    if (tollState.filterDept && tollState.filterDept !== 'ALL' && r.departement !== tollState.filterDept) return false;
     return true;
   });
+}
+
+function updateTollFilterDropdowns() {
+  const personneSel = document.getElementById('filterTollPersonne');
+  const deptSel = document.getElementById('filterTollDept');
+  const names = Array.from(new Set(tollState.records.map(r => r.personne).filter(Boolean))).sort();
+  const depts = Array.from(new Set(tollState.records.map(r => r.departement).filter(Boolean))).sort();
+
+  if (personneSel) {
+    const curVal = personneSel.value;
+    personneSel.innerHTML = '<option value="ALL">Toutes les personnes</option>';
+    names.forEach(n => {
+      const opt = document.createElement('option');
+      opt.value = n; opt.textContent = n;
+      personneSel.appendChild(opt);
+    });
+    if (names.includes(curVal)) personneSel.value = curVal;
+  }
+  if (deptSel) {
+    const curVal = deptSel.value;
+    deptSel.innerHTML = '<option value="ALL">Tous les departements</option>';
+    depts.forEach(d => {
+      const opt = document.createElement('option');
+      opt.value = d; opt.textContent = d;
+      deptSel.appendChild(opt);
+    });
+    if (depts.includes(curVal)) deptSel.value = curVal;
+  }
 }
 
 function renderTollTable() {
@@ -1026,6 +1059,21 @@ function setupTollEventListeners() {
     renderTollTable();
   });
 
+  const filterTollPersonneEl = document.getElementById('filterTollPersonne');
+  if (filterTollPersonneEl) {
+    filterTollPersonneEl.addEventListener('change', (e) => {
+      tollState.filterPersonne = e.target.value;
+      renderTollTable();
+    });
+  }
+  const filterTollDeptEl = document.getElementById('filterTollDept');
+  if (filterTollDeptEl) {
+    filterTollDeptEl.addEventListener('change', (e) => {
+      tollState.filterDept = e.target.value;
+      renderTollTable();
+    });
+  }
+
   document.getElementById('btnExportToll').addEventListener('click', exportTollToExcel);
 }
 
@@ -1033,6 +1081,7 @@ function setupTollEventListeners() {
 (async function initTollModule() {
   document.addEventListener('DOMContentLoaded', async () => {
     await loadTollRecords();
+    updateTollFilterDropdowns();
     setupTollEventListeners();
     setupTabs();
     renderTollTable();
@@ -1314,6 +1363,8 @@ function renderConsumptionTable(filtered) {
 let chargeState = {
   records: [],
   filterRembourse: 'ALL',
+  filterPersonne: 'ALL',
+  filterDept: 'ALL',
   cameraStream: null,
   currentEditingId: null,
   tempImage: null,
@@ -1335,14 +1386,45 @@ async function saveChargeRecords() {
   } catch (e) {
     showToast('⚠️ Erreur de sauvegarde', 'warning');
   }
+  updateChargeFilterDropdowns();
   renderChargeTable();
 }
 
 function getFilteredChargeRecords() {
   return chargeState.records.filter(r => {
     if (chargeState.filterRembourse !== 'ALL' && r.rembourse !== chargeState.filterRembourse) return false;
+    if (chargeState.filterPersonne && chargeState.filterPersonne !== 'ALL' && r.personne !== chargeState.filterPersonne) return false;
+    if (chargeState.filterDept && chargeState.filterDept !== 'ALL' && r.departement !== chargeState.filterDept) return false;
     return true;
   });
+}
+
+function updateChargeFilterDropdowns() {
+  const personneSel = document.getElementById('filterChargePersonne');
+  const deptSel = document.getElementById('filterChargeDept');
+  const names = Array.from(new Set(chargeState.records.map(r => r.personne).filter(Boolean))).sort();
+  const depts = Array.from(new Set(chargeState.records.map(r => r.departement).filter(Boolean))).sort();
+
+  if (personneSel) {
+    const curVal = personneSel.value;
+    personneSel.innerHTML = '<option value="ALL">Toutes les personnes</option>';
+    names.forEach(n => {
+      const opt = document.createElement('option');
+      opt.value = n; opt.textContent = n;
+      personneSel.appendChild(opt);
+    });
+    if (names.includes(curVal)) personneSel.value = curVal;
+  }
+  if (deptSel) {
+    const curVal = deptSel.value;
+    deptSel.innerHTML = '<option value="ALL">Tous les departements</option>';
+    depts.forEach(d => {
+      const opt = document.createElement('option');
+      opt.value = d; opt.textContent = d;
+      deptSel.appendChild(opt);
+    });
+    if (depts.includes(curVal)) deptSel.value = curVal;
+  }
 }
 
 function renderChargeTable() {
@@ -1645,6 +1727,21 @@ function setupChargeEventListeners() {
     chargeState.filterRembourse = e.target.value;
     renderChargeTable();
   });
+
+  const filterChargePersonneEl = document.getElementById('filterChargePersonne');
+  if (filterChargePersonneEl) {
+    filterChargePersonneEl.addEventListener('change', (e) => {
+      chargeState.filterPersonne = e.target.value;
+      renderChargeTable();
+    });
+  }
+  const filterChargeDeptEl = document.getElementById('filterChargeDept');
+  if (filterChargeDeptEl) {
+    filterChargeDeptEl.addEventListener('change', (e) => {
+      chargeState.filterDept = e.target.value;
+      renderChargeTable();
+    });
+  }
 
   document.getElementById('btnExportCharge').addEventListener('click', exportChargeToExcel);
 }
@@ -1949,6 +2046,7 @@ function closeSignedSheetModal() {
 // Init module Charges + feuille de remboursement + scan feuille signee
 document.addEventListener('DOMContentLoaded', async () => {
   await loadChargeRecords();
+  updateChargeFilterDropdowns();
   setupChargeEventListeners();
   renderChargeTable();
 
@@ -2277,3 +2375,19 @@ document.addEventListener('DOMContentLoaded', () => {
   const btnSaveChargeBatch = document.getElementById('btnSaveChargeBatch');
   if (btnSaveChargeBatch) btnSaveChargeBatch.addEventListener('click', saveChargeBatchResults);
 });
+
+// ==================== BOUTON FLOTTANT : AJOUT MANUEL CONTEXTUEL ====================
+function openManualAddForActiveTab() {
+  const activeTab = document.querySelector('.tab-btn.active');
+  const tabName = activeTab ? activeTab.dataset.tab : 'gasoil';
+
+  if (tabName === 'gasoil') {
+    openEditModalWithData({ id: "BON-" + Date.now().toString().slice(-6) });
+  } else if (tabName === 'autoroute') {
+    openEditTollModalWithData({ id: "TOLL-" + Date.now().toString().slice(-6), rembourse: 'NO' });
+  } else if (tabName === 'charges') {
+    openEditChargeModalWithData({ id: "CHG-" + Date.now().toString().slice(-6), rembourse: 'NO' });
+  } else {
+    showToast("Passez sur un onglet Gasoil, Autoroute ou Charges pour ajouter une entree.", "info");
+  }
+}
