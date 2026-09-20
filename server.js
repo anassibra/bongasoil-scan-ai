@@ -565,3 +565,15 @@ app.get('*', (req, res) => {
 app.listen(PORT, () => {
   console.log('Serveur demarre sur le port ' + PORT);
 });
+
+console.log('--- DEBUG ROUTES ---');
+app._router.stack.forEach(layer => {
+  if (layer.route) {
+    console.log(Object.keys(layer.route.methods)[0].toUpperCase(), layer.route.path);
+  } else if (layer.name === 'router' && layer.handle.stack) {
+    layer.handle.stack.forEach(r => {
+      if (r.route) console.log(Object.keys(r.route.methods)[0].toUpperCase(), r.route.path);
+    });
+  }
+});
+console.log('--- FIN DEBUG ---');
