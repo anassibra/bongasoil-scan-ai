@@ -38,7 +38,6 @@
   <div id="projectsScreen" class="projects-screen" style="display:none;">
     <div class="projects-header">
       <h1>📁 Mes Projets</h1>
-      <button id="btnManageUsers" class="btn-secondary" style="margin-right:8px;">👥 Utilisateurs</button>
       <button id="btnLogout" class="btn-secondary">Deconnexion</button>
     </div>
     <button id="btnShowNewProject" class="btn-primary btn-lg" style="margin: 16px;">➕ Creer un nouveau projet</button>
@@ -75,42 +74,7 @@
     </div>
   </div>
 
-  
-  <!-- Modal Gestion Utilisateurs -->
-  <div id="usersModal" class="modal">
-    <div class="modal-overlay"></div>
-    <div class="modal-content">
-      <div class="modal-header">
-        <h2>Gerer les utilisateurs</h2>
-        <button id="btnCloseUsersModal" class="btn-close">&times;</button>
-      </div>
-      <div class="modal-body">
-        <h3 style="font-size:14px; margin-bottom:10px;">Creer un compte</h3>
-        <form id="newUserForm" class="form-simple">
-          <div class="form-group">
-            <label>Nom complet</label>
-            <input type="text" id="newUserFullName" class="form-input" required>
-          </div>
-          <div class="form-group">
-            <label>Identifiant</label>
-            <input type="text" id="newUserUsername" class="form-input" required autocomplete="off">
-          </div>
-          <div class="form-group">
-            <label>Mot de passe</label>
-            <input type="password" id="newUserPassword" class="form-input" required autocomplete="new-password">
-          </div>
-          <p id="newUserError" class="auth-error" style="display:none;"></p>
-          <div class="form-actions">
-            <button type="submit" class="btn-primary" style="width:100%;">Creer le compte</button>
-          </div>
-        </form>
-        <h3 style="font-size:14px; margin:20px 0 10px;">Comptes existants</h3>
-        <div id="usersList"></div>
-      </div>
-    </div>
-  </div>
-
-<div id="appScreen" style="display:none;">
+  <div id="appScreen" style="display:none;">
     <button id="btnBackToProjects" class="btn-secondary" style="margin:12px;">⬅ Mes Projets</button>
     <span id="currentProjectName" style="font-weight:600; margin-left:8px;"></span>
 
