@@ -155,36 +155,7 @@
   document.getElementById('btnManageUsers').addEventListener('click', () => {
     openModal('usersModal');
     loadUsers();
-    setupProjectCheckboxes();
   });
-
-  async function setupProjectCheckboxes() {
-    const wrap = document.getElementById('newUserProjectsWrap');
-    if (window.currentUser.role !== 'client') {
-      wrap.style.display = 'none';
-      return;
-    }
-    wrap.style.display = 'block';
-    const box = document.getElementById('newUserProjectsList');
-    box.innerHTML = 'Chargement...';
-    try {
-      const res = await fetch('/api/projects');
-      const projects = await res.json();
-      if (!projects.length) {
-        box.innerHTML = '<p class="projects-empty" style="padding:8px 0;">Creez d\'abord un projet.</p>';
-        return;
-      }
-      box.innerHTML = '';
-      projects.forEach(p => {
-        const label = document.createElement('label');
-        label.className = 'project-checkbox-row';
-        label.innerHTML = '<input type="checkbox" value="' + p.id + '"> ' + escapeHtml(p.name);
-        box.appendChild(label);
-      });
-    } catch (e) {
-      box.innerHTML = '<p class="projects-empty">Erreur de chargement.</p>';
-    }
-  }
   document.getElementById('btnCloseUsersModal').addEventListener('click', () => closeModal('usersModal'));
 
   document.getElementById('newUserForm').addEventListener('submit', async (e) => {
@@ -199,10 +170,7 @@
       const res = await fetch('/api/users', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          username, password, fullName,
-          projectIds: Array.from(document.querySelectorAll('#newUserProjectsList input:checked')).map(cb => parseInt(cb.value))
-        })
+        body: JSON.stringify({ username, password, fullName })
       });
       const data = await res.json();
       if (!res.ok) {

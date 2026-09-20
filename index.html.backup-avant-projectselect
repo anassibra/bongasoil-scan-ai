@@ -99,10 +99,6 @@
             <label>Mot de passe</label>
             <input type="password" id="newUserPassword" class="form-input" required autocomplete="new-password">
           </div>
-          <div id="newUserProjectsWrap" style="display:none; margin-bottom:14px;">
-            <label style="display:block; margin-bottom:6px; font-size:13px; color:#64748b;">Acces aux projets</label>
-            <div id="newUserProjectsList" class="project-checkbox-box"></div>
-          </div>
           <p id="newUserError" class="auth-error" style="display:none;"></p>
           <div class="form-actions">
             <button type="submit" class="btn-primary" style="width:100%;">Creer le compte</button>
