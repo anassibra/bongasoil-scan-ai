@@ -865,3 +865,34 @@ html, body {
   cursor: pointer;
 }
 .project-checkbox-row input { width: 16px; height: 16px; }
+
+.user-row-manage { flex-direction: column; align-items: stretch; }
+.user-row-top { width: 100%; }
+.user-status-badge {
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 100px;
+  margin-left: 6px;
+}
+.status-active { background: #dcfce7; color: #166534; }
+.status-inactive { background: #fee2e2; color: #991b1b; }
+.user-row-actions {
+  display: flex;
+  gap: 14px;
+  margin-top: 8px;
+}
+.btn-link {
+  background: none;
+  border: none;
+  color: #2563eb;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0;
+}
+.btn-link:hover { text-decoration: underline; }
+.edit-access-box {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px dashed #e2e8f0;
+}
