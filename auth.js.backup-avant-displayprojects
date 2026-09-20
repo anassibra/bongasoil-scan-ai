@@ -148,7 +148,6 @@
               <span class="user-role-badge">${u.role === 'client' ? 'Client' : 'Collaborateur'}</span>
               <span class="user-status-badge ${statusClass}">${statusLabel}</span>
               <div class="user-username">@${escapeHtml(u.username)}</div>
-              ${u.role === 'collaborator' ? '<div class="user-projects">' + (u.project_names && u.project_names.length ? '📁 ' + u.project_names.map(escapeHtml).join(', ') : '<span class=\'no-access\'>Aucun projet assigne</span>') + '</div>' : ''}
             </div>
           </div>
           <div class="user-row-actions">
