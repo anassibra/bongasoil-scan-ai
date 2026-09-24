@@ -154,7 +154,6 @@
           <div class="user-row-actions">
             ${u.role === 'collaborator' ? '<button type="button" class="btn-link btn-edit-access" data-id="' + u.id + '">Modifier acces</button>' : ''}
             <button type="button" class="btn-link btn-toggle-active" data-id="${u.id}" data-active="${u.active}">${u.active ? 'Desactiver' : 'Reactiver'}</button>
-            <button type="button" class="btn-link btn-delete-user" data-id="${u.id}" style="color:#dc2626;">Supprimer</button>
           </div>
           <div id="editAccessBox-${u.id}" class="edit-access-box" style="display:none;"></div>`;
         list.appendChild(row);
@@ -171,16 +170,6 @@
             body: JSON.stringify({ active: !currentlyActive })
           });
           if (res.ok) loadUsers(); else alert('Erreur lors de la mise a jour.');
-        });
-      });
-
-      list.querySelectorAll('.btn-delete-user').forEach(btn => {
-        btn.addEventListener('click', async () => {
-          const id = btn.dataset.id;
-          if (!confirm('Supprimer definitivement ce compte ? Cette action est irreversible.')) return;
-          const res = await fetch('/api/users/' + id, { method: 'DELETE' });
-          const data = await res.json();
-          if (res.ok) { loadUsers(); } else { alert(data.error || 'Erreur lors de la suppression.'); }
         });
       });
 
@@ -302,17 +291,3 @@
 
   checkSession();
 })();
-
-// Bascule affichage/masquage des mots de passe
-document.querySelectorAll('.btn-eye').forEach(btn => {
-  btn.addEventListener('click', () => {
-    const input = document.getElementById(btn.dataset.target);
-    if (input.type === 'password') {
-      input.type = 'text';
-      btn.textContent = '🙈';
-    } else {
-      input.type = 'password';
-      btn.textContent = '👁';
-    }
-  });
-});

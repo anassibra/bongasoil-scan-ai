@@ -26,7 +26,7 @@
         </div>
         <div class="form-group">
           <label>Mot de passe</label>
-          <div class="password-wrap"><input type="password" id="loginPassword" class="form-input" required autocomplete="current-password"><button type="button" class="btn-eye" data-target="loginPassword">👁</button></div>
+          <input type="password" id="loginPassword" class="form-input" required autocomplete="current-password">
         </div>
         <p id="loginError" class="auth-error" style="display:none;"></p>
         <button type="submit" class="btn-primary btn-lg" style="width:100%;">Se connecter</button>
@@ -97,7 +97,7 @@
           </div>
           <div class="form-group">
             <label>Mot de passe</label>
-            <div class="password-wrap"><input type="password" id="newUserPassword" class="form-input" required autocomplete="new-password"><button type="button" class="btn-eye" data-target="newUserPassword">👁</button></div>
+            <input type="password" id="newUserPassword" class="form-input" required autocomplete="new-password">
           </div>
           <div id="newUserProjectsWrap" style="display:none; margin-bottom:14px;">
             <label style="display:block; margin-bottom:6px; font-size:13px; color:#64748b;">Acces aux projets</label>
