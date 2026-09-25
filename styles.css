@@ -943,3 +943,7 @@ html, body {
 .auth-form button[type="submit"] {
   margin-top: 20px;
 }
+
+#loginForm button[type="submit"] {
+  margin-top: 20px !important;
+}
