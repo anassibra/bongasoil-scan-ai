@@ -922,3 +922,24 @@ html, body {
   font-size: 16px;
   padding: 4px;
 }
+
+.password-wrap {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  gap: 8px;
+}
+
+.password-wrap input.form-input {
+  flex: 1;
+  min-width: 0;
+  width: auto;
+}
+
+.password-wrap .btn-eye {
+  flex-shrink: 0;
+}
+
+.auth-form button[type="submit"] {
+  margin-top: 20px;
+}
