@@ -57,24 +57,10 @@ async function idbSet(key, value) {
 
 async function loadRecords() {
   try {
-    const existing = await idbGet('records');
-    if (existing && Array.isArray(existing) && existing.length > 0) {
-      state.records = existing;
-      return;
-    }
-    // Migration depuis l'ancien localStorage (une seule fois)
-    const oldSaved = localStorage.getItem('bon_gasoil_records');
-    if (oldSaved) {
-      const parsed = JSON.parse(oldSaved);
-      state.records = Array.isArray(parsed) ? parsed : [...SAMPLE_DATA];
-      await idbSet('records', state.records);
-      localStorage.removeItem('bon_gasoil_records');
-    } else {
-      state.records = [...SAMPLE_DATA];
-    }
+    state.records = await apiGetRecords('gasoil');
   } catch (e) {
-    console.error('Erreur chargement IndexedDB:', e);
-    state.records = [...SAMPLE_DATA];
+    console.error('Erreur chargement API:', e);
+    state.records = [];
   }
 }
 
@@ -456,19 +442,23 @@ async function saveBatchResults() {
   let savedCount = 0;
   for (const item of batchResults) {
     if (!item.nomPrenom || !item.nomPrenom.trim()) continue;
-    state.records.unshift({
-      id: "BON-" + Date.now().toString().slice(-6) + "-" + savedCount,
-      nomPrenom: item.nomPrenom.trim(),
-      date: item.date || new Date().toISOString().split('T')[0],
-      montant: parseFloat(item.montant) || 0,
-      departement: item.departement || '',
-      kilometrage: parseInt(item.kilometrage) || 0,
-      immatriculation: (item.immatriculation || '').trim(),
-      image: null
-    });
-    savedCount++;
+    try {
+      await apiCreateRecord('gasoil', {
+        nomPrenom: item.nomPrenom.trim(),
+        date: item.date || new Date().toISOString().split('T')[0],
+        montant: parseFloat(item.montant) || 0,
+        departement: item.departement || '',
+        kilometrage: parseInt(item.kilometrage) || 0,
+        immatriculation: (item.immatriculation || '').trim(),
+        image: null
+      });
+      savedCount++;
+    } catch (e) {}
   }
-  await saveRecords();
+  await loadRecords();
+  updateAllFilterDropdowns();
+  renderStats();
+  renderTable();
   closeBatchModal();
   showToast("🎉 " + savedCount + " bon(s) enregistre(s) !", "success");
 }
@@ -582,22 +572,28 @@ function saveRecordForm(e) {
     return;
   }
 
-  const existingIndex = state.records.findIndex(r => r.id === state.currentEditingId);
-  const recordObj = {
-    id: state.currentEditingId || ("BON-" + Date.now().toString().slice(-6)),
+  const dataObj = {
     nomPrenom, date, montant, departement, kilometrage, immatriculation,
     image: state.tempScannedImage
   };
 
-  if (existingIndex >= 0) {
-    state.records[existingIndex] = recordObj;
-  } else {
-    state.records.unshift(recordObj);
-  }
-
-  saveRecords();
-  closeEditModal();
-  showToast("✅ Bon enregistré !", "success");
+  (async () => {
+    try {
+      if (state.currentEditingId) {
+        await apiUpdateRecord(state.currentEditingId, dataObj);
+      } else {
+        await apiCreateRecord('gasoil', dataObj);
+      }
+      await loadRecords();
+      updateAllFilterDropdowns();
+      renderStats();
+      renderTable();
+      closeEditModal();
+      showToast("✅ Bon enregistré !", "success");
+    } catch (err) {
+      showToast("⚠️ Erreur d'enregistrement", "warning");
+    }
+  })();
 }
 
 function editRecord(id) {
@@ -607,9 +603,13 @@ function editRecord(id) {
 
 function deleteRecord(id) {
   if (confirm("Supprimer ce bon ?")) {
-    state.records = state.records.filter(r => r.id !== id);
-    saveRecords();
-    showToast("Bon supprimé.", "info");
+    apiDeleteRecord(id).then(() => {
+      state.records = state.records.filter(r => r.id !== id);
+      updateAllFilterDropdowns();
+      renderStats();
+      renderTable();
+      showToast("Bon supprimé.", "info");
+    }).catch(() => showToast("⚠️ Erreur de suppression", "warning"));
   }
 }
 
@@ -617,7 +617,10 @@ function toggleGasoilRembourse(id) {
   const record = state.records.find(r => r.id === id);
   if (record) {
     record.rembourse = record.rembourse === 'YES' ? 'NO' : 'YES';
-    saveRecords();
+    const { nomPrenom, date, montant, departement, kilometrage, immatriculation, rembourse, image } = record;
+    apiUpdateRecord(id, { nomPrenom, date, montant, departement, kilometrage, immatriculation, rembourse, image })
+      .then(() => { updateAllFilterDropdowns(); renderStats(); renderTable(); })
+      .catch(() => showToast('⚠️ Erreur de mise a jour', 'warning'));
     showToast(record.rembourse === 'YES' ? '✅ Marque comme rembourse' : '⏳ Marque comme non rembourse', 'info');
   }
 }
@@ -687,8 +690,7 @@ let tollState = {
 
 async function loadTollRecords() {
   try {
-    const existing = await idbGet('toll_records');
-    tollState.records = (existing && Array.isArray(existing)) ? existing : [];
+    tollState.records = await apiGetRecords('autoroute');
   } catch (e) {
     tollState.records = [];
   }
@@ -781,16 +783,22 @@ function toggleTollRembourse(id) {
   const record = tollState.records.find(r => r.id === id);
   if (record) {
     record.rembourse = record.rembourse === 'YES' ? 'NO' : 'YES';
-    saveTollRecords();
+    const { personne, departement, date, trajet, montant, rembourse, image } = record;
+    apiUpdateRecord(id, { personne, departement, date, trajet, montant, rembourse, image })
+      .then(() => { updateTollFilterDropdowns(); renderTollTable(); })
+      .catch(() => showToast('⚠️ Erreur de mise a jour', 'warning'));
     showToast(record.rembourse === 'YES' ? '✅ Marque comme rembourse' : '⏳ Marque comme non rembourse', 'info');
   }
 }
 
 function deleteTollRecord(id) {
   if (confirm('Supprimer ce ticket ?')) {
-    tollState.records = tollState.records.filter(r => r.id !== id);
-    saveTollRecords();
-    showToast('Ticket supprime.', 'info');
+    apiDeleteRecord(id).then(() => {
+      tollState.records = tollState.records.filter(r => r.id !== id);
+      updateTollFilterDropdowns();
+      renderTollTable();
+      showToast('Ticket supprime.', 'info');
+    }).catch(() => showToast('⚠️ Erreur de suppression', 'warning'));
   }
 }
 
@@ -963,24 +971,30 @@ function saveTollForm(e) {
     return;
   }
 
-  const existingIndex = tollState.records.findIndex(r => r.id === tollState.currentEditingId);
-  const recordObj = {
-    id: tollState.currentEditingId || ("TOLL-" + Date.now().toString().slice(-6)),
+  const dataObj = {
     personne, departement, date, trajet, montant, rembourse,
     image: tollState.tempImage
   };
 
-  if (existingIndex >= 0) {
-    tollState.records[existingIndex] = recordObj;
-  } else {
-    tollState.records.unshift(recordObj);
-  }
-
   state.lastTollPersonne = personne;
   state.lastTollDept = departement;
-  saveTollRecords();
-  closeEditTollModal();
-  showToast("✅ Ticket enregistre !", "success");
+
+  (async () => {
+    try {
+      if (tollState.currentEditingId) {
+        await apiUpdateRecord(tollState.currentEditingId, dataObj);
+      } else {
+        await apiCreateRecord('autoroute', dataObj);
+      }
+      await loadTollRecords();
+      updateTollFilterDropdowns();
+      renderTollTable();
+      closeEditTollModal();
+      showToast("✅ Ticket enregistre !", "success");
+    } catch (err) {
+      showToast("⚠️ Erreur d'enregistrement", "warning");
+    }
+  })();
 }
 
 function exportTollToExcel() {
@@ -1387,8 +1401,7 @@ let chargeState = {
 
 async function loadChargeRecords() {
   try {
-    const existing = await idbGet('charge_records');
-    chargeState.records = (existing && Array.isArray(existing)) ? existing : [];
+    chargeState.records = await apiGetRecords('charge');
   } catch (e) {
     chargeState.records = [];
   }
@@ -1481,16 +1494,22 @@ function toggleChargeRembourse(id) {
   const record = chargeState.records.find(r => r.id === id);
   if (record) {
     record.rembourse = record.rembourse === 'YES' ? 'NO' : 'YES';
-    saveChargeRecords();
+    const { personne, departement, date, description, montant, rembourse, image } = record;
+    apiUpdateRecord(id, { personne, departement, date, description, montant, rembourse, image })
+      .then(() => { updateChargeFilterDropdowns(); renderChargeTable(); })
+      .catch(() => showToast('⚠️ Erreur de mise a jour', 'warning'));
     showToast(record.rembourse === 'YES' ? '✅ Marque comme rembourse' : '⏳ Marque comme non rembourse', 'info');
   }
 }
 
 function deleteChargeRecord(id) {
   if (confirm('Supprimer cette charge ?')) {
-    chargeState.records = chargeState.records.filter(r => r.id !== id);
-    saveChargeRecords();
-    showToast('Charge supprimee.', 'info');
+    apiDeleteRecord(id).then(() => {
+      chargeState.records = chargeState.records.filter(r => r.id !== id);
+      updateChargeFilterDropdowns();
+      renderChargeTable();
+      showToast('Charge supprimee.', 'info');
+    }).catch(() => showToast('⚠️ Erreur de suppression', 'warning'));
   }
 }
 
@@ -1662,24 +1681,30 @@ function saveChargeForm(e) {
     return;
   }
 
-  const existingIndex = chargeState.records.findIndex(r => r.id === chargeState.currentEditingId);
-  const recordObj = {
-    id: chargeState.currentEditingId || ("CHG-" + Date.now().toString().slice(-6)),
+  const dataObj = {
     personne, departement, date, description, montant, rembourse,
     image: chargeState.tempImage
   };
 
-  if (existingIndex >= 0) {
-    chargeState.records[existingIndex] = recordObj;
-  } else {
-    chargeState.records.unshift(recordObj);
-  }
-
   state.lastChargePersonne = personne;
   state.lastChargeDept = departement;
-  saveChargeRecords();
-  closeEditChargeModal();
-  showToast("✅ Charge enregistree !", "success");
+
+  (async () => {
+    try {
+      if (chargeState.currentEditingId) {
+        await apiUpdateRecord(chargeState.currentEditingId, dataObj);
+      } else {
+        await apiCreateRecord('charge', dataObj);
+      }
+      await loadChargeRecords();
+      updateChargeFilterDropdowns();
+      renderChargeTable();
+      closeEditChargeModal();
+      showToast("✅ Charge enregistree !", "success");
+    } catch (err) {
+      showToast("⚠️ Erreur d'enregistrement", "warning");
+    }
+  })();
 }
 
 function exportChargeToExcel() {
@@ -2019,6 +2044,7 @@ function removeSignedSheetItem(idx) {
 
 async function confirmSignedSheetUpdate() {
   let updatedCount = 0;
+  const toUpdate = [];
 
   signedSheetResults.forEach(item => {
     if (!item.signe || !item.nomMatched) return;
@@ -2027,26 +2053,43 @@ async function confirmSignedSheetUpdate() {
     state.records.forEach(r => {
       if ((r.nomPrenom || '').trim().toLowerCase() === name && r.rembourse !== 'YES') {
         r.rembourse = 'YES';
+        const { nomPrenom, date, montant, departement, kilometrage, immatriculation, rembourse, image } = r;
+        toUpdate.push(apiUpdateRecord(r.id, { nomPrenom, date, montant, departement, kilometrage, immatriculation, rembourse, image }));
         updatedCount++;
       }
     });
     tollState.records.forEach(r => {
       if ((r.personne || '').trim().toLowerCase() === name && r.rembourse !== 'YES') {
         r.rembourse = 'YES';
+        const { personne, departement, date, trajet, montant, rembourse, image } = r;
+        toUpdate.push(apiUpdateRecord(r.id, { personne, departement, date, trajet, montant, rembourse, image }));
         updatedCount++;
       }
     });
     chargeState.records.forEach(r => {
       if ((r.personne || '').trim().toLowerCase() === name && r.rembourse !== 'YES') {
         r.rembourse = 'YES';
+        const { personne, departement, date, description, montant, rembourse, image } = r;
+        toUpdate.push(apiUpdateRecord(r.id, { personne, departement, date, description, montant, rembourse, image }));
         updatedCount++;
       }
     });
   });
 
-  await saveRecords();
-  await saveTollRecords();
-  await saveChargeRecords();
+  try {
+    await Promise.all(toUpdate);
+  } catch (e) {}
+
+  await loadRecords();
+  await loadTollRecords();
+  await loadChargeRecords();
+  updateAllFilterDropdowns();
+  renderStats();
+  renderTable();
+  updateTollFilterDropdowns();
+  renderTollTable();
+  updateChargeFilterDropdowns();
+  renderChargeTable();
 
   closeSignedSheetModal();
   showToast("✅ " + updatedCount + " depense(s) marquee(s) comme remboursee(s) !", "success");
@@ -2208,19 +2251,22 @@ async function saveTollBatchResults() {
   let savedCount = 0;
   for (const item of tollBatchResults) {
     if (!item.personne || !item.personne.trim()) continue;
-    tollState.records.unshift({
-      id: "TOLL-" + Date.now().toString().slice(-6) + "-" + savedCount,
-      personne: item.personne.trim(),
-      departement: item.departement || '',
-      date: item.date || new Date().toISOString().split('T')[0],
-      trajet: (item.trajet || '').trim(),
-      montant: parseFloat(item.montant) || 0,
-      rembourse: 'NO',
-      image: null
-    });
-    savedCount++;
+    try {
+      await apiCreateRecord('autoroute', {
+        personne: item.personne.trim(),
+        departement: item.departement || '',
+        date: item.date || new Date().toISOString().split('T')[0],
+        trajet: (item.trajet || '').trim(),
+        montant: parseFloat(item.montant) || 0,
+        rembourse: 'NO',
+        image: null
+      });
+      savedCount++;
+    } catch (e) {}
   }
-  await saveTollRecords();
+  await loadTollRecords();
+  updateTollFilterDropdowns();
+  renderTollTable();
   closeTollBatchModal();
   showToast("🎉 " + savedCount + " ticket(s) enregistre(s) !", "success");
 }
@@ -2319,19 +2365,22 @@ async function saveChargeBatchResults() {
   let savedCount = 0;
   for (const item of chargeBatchResults) {
     if (!item.personne || !item.personne.trim()) continue;
-    chargeState.records.unshift({
-      id: "CHG-" + Date.now().toString().slice(-6) + "-" + savedCount,
-      personne: item.personne.trim(),
-      departement: item.departement || '',
-      date: item.date || new Date().toISOString().split('T')[0],
-      description: (item.description || '').trim(),
-      montant: parseFloat(item.montant) || 0,
-      rembourse: 'NO',
-      image: null
-    });
-    savedCount++;
+    try {
+      await apiCreateRecord('charge', {
+        personne: item.personne.trim(),
+        departement: item.departement || '',
+        date: item.date || new Date().toISOString().split('T')[0],
+        description: (item.description || '').trim(),
+        montant: parseFloat(item.montant) || 0,
+        rembourse: 'NO',
+        image: null
+      });
+      savedCount++;
+    } catch (e) {}
   }
-  await saveChargeRecords();
+  await loadChargeRecords();
+  updateChargeFilterDropdowns();
+  renderChargeTable();
   closeChargeBatchModal();
   showToast("🎉 " + savedCount + " recu(s) enregistre(s) !", "success");
 }
