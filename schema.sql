@@ -45,3 +45,5 @@ CREATE INDEX IF NOT EXISTS idx_session_expire ON session (expire);
 
 CREATE INDEX IF NOT EXISTS idx_records_project ON records(project_id);
 CREATE INDEX IF NOT EXISTS idx_projects_owner ON projects(owner_id);
+
+ALTER TABLE records ADD COLUMN IF NOT EXISTS updated_by INTEGER REFERENCES users(id);
