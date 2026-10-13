@@ -109,11 +109,25 @@
   document.getElementById('btnShowNewProject').addEventListener('click', () => openModal('newProjectModal'));
   document.getElementById('btnCancelNewProject').addEventListener('click', () => closeModal('newProjectModal'));
 
-  function openProject(project) {
+  async function openProject(project) {
     window.currentProject = project;
     sessionStorage.setItem('currentProjectId', project.id);
     document.getElementById('currentProjectName').textContent = project.name;
     showOnly(appScreen);
+    try {
+      await loadRecords();
+      await loadTollRecords();
+      await loadChargeRecords();
+      updateAllFilterDropdowns();
+      renderStats();
+      renderTable();
+      updateTollFilterDropdowns();
+      renderTollTable();
+      updateChargeFilterDropdowns();
+      renderChargeTable();
+    } catch (e) {
+      console.error('Erreur chargement du projet:', e);
+    }
   }
 
   document.getElementById('btnBackToProjects').addEventListener('click', loadProjects);

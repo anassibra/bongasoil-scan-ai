@@ -4,7 +4,7 @@ async function apiGetRecords(type) {
   if (!res.ok) return [];
   const rows = await res.json();
   return rows.map(r => ({
-    id: r.id,
+    id: String(r.id),
     ...r.data,
     createdByUsername: r.created_by_username,
     updatedByUsername: r.updated_by_username,
