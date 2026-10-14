@@ -1,4 +1,4 @@
-∑const express = require('express');
+const express = require('express');
 const path = require('path');
 const https = require('https');
 
@@ -17,7 +17,8 @@ const { requireAuth } = require('./auth-middleware');
 const authRoutes = require('./routes-auth');
 const projectRoutes = require('./routes-projects');
 const userRoutes = require('./routes-users');
-   const recordRoutes = require('./routes-records');
+const recordRoutes = require('./routes-records');
+
 
 app.use(session({
   store: new pgSession({ pool, tableName: 'session' }),
@@ -29,8 +30,9 @@ app.use(session({
 
 app.use('/api', authRoutes);
 app.use('/api/projects', requireAuth, projectRoutes);
-app.use('/api/users', requireAuth, userRoutes);   app.use('/api/records', requireAuth, recordRoutes);
-   app.use('/api/records', requireAuth, recordRoutes);
+app.use('/api/users', requireAuth, userRoutes);
+app.use('/api/records', requireAuth, recordRoutes);
+
 
 
 
