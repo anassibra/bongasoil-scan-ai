@@ -471,6 +471,7 @@ function closeBatchModal() {
 // EXTRACTION AUTOMATIQUE via IA Vision (Claude) - lit aussi l'écriture manuscrite
 async function runOCRExtraction(imageDataUrl) {
   state.tempScannedImage = imageDataUrl;
+  compressImageDataUrl(imageDataUrl).then(small => { state.tempScannedImage = small; });
   showToast("🧠 Lecture intelligente du bon en cours...", "info");
 
   try {
@@ -627,7 +628,15 @@ function toggleGasoilRembourse(id) {
 
 function viewVoucherImage(id) {
   const record = state.records.find(r => r.id === id);
-  if (!record || !record.image) return;
+  if (!record || !record.image) { showToast('Aucune image pour ce bon.', 'info'); return; }
+  document.getElementById('viewModalImage').src = record.image;
+  document.getElementById('viewImageModal').classList.add('active');
+}
+
+function viewRecordImage(id, kind) {
+  const list = kind === 'toll' ? tollState.records : chargeState.records;
+  const record = list.find(r => r.id === id);
+  if (!record || !record.image) { showToast('Aucune image pour ce justificatif.', 'info'); return; }
   document.getElementById('viewModalImage').src = record.image;
   document.getElementById('viewImageModal').classList.add('active');
 }
@@ -771,6 +780,7 @@ function renderTollTable() {
         <div class="table-actions">
           <button class="action-btn" onclick="toggleTollRembourse('${record.id}')">🔄</button>
           <button class="action-btn" onclick="editTollRecord('${record.id}')">✏️</button>
+          <button class="action-btn" onclick="viewRecordImage('${record.id}', 'toll')">👁️</button>
           <button class="action-btn delete" onclick="deleteTollRecord('${record.id}')">🗑️</button>
         </div>
       </td>
@@ -1482,6 +1492,7 @@ function renderChargeTable() {
         <div class="table-actions">
           <button class="action-btn" onclick="toggleChargeRembourse('${record.id}')">🔄</button>
           <button class="action-btn" onclick="editChargeRecord('${record.id}')">✏️</button>
+          <button class="action-btn" onclick="viewRecordImage('${record.id}', 'charge')">👁️</button>
           <button class="action-btn delete" onclick="deleteChargeRecord('${record.id}')">🗑️</button>
         </div>
       </td>
