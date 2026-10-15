@@ -372,6 +372,7 @@ async function runBatchExtraction(imageDataUrl) {
     const extractedList = await response.json();
     if (!response.ok) throw new Error(extractedList.error || 'Erreur extraction');
 
+    const batchSheetImage = await compressImageDataUrl(imageDataUrl);
     batchResults = extractedList.map((item, idx) => ({
       tempId: 'batch-' + idx,
       nomPrenom: item.nomPrenom || '',
@@ -379,7 +380,8 @@ async function runBatchExtraction(imageDataUrl) {
       montant: item.montant || '',
       departement: item.departement || '',
       kilometrage: item.kilometrage || '',
-      immatriculation: item.immatriculation || ''
+      immatriculation: item.immatriculation || '',
+      image: batchSheetImage
     }));
 
     if (batchResults.length === 0) {
@@ -450,7 +452,7 @@ async function saveBatchResults() {
         departement: item.departement || '',
         kilometrage: parseInt(item.kilometrage) || 0,
         immatriculation: (item.immatriculation || '').trim(),
-        image: null
+        image: item.image || null
       });
       savedCount++;
     } catch (e) {}
@@ -580,6 +582,7 @@ function saveRecordForm(e) {
 
   (async () => {
     try {
+      if (dataObj.image && dataObj.image.length > 400000) dataObj.image = await compressImageDataUrl(dataObj.image);
       if (state.currentEditingId) {
         await apiUpdateRecord(state.currentEditingId, dataObj);
       } else {
@@ -992,6 +995,7 @@ function saveTollForm(e) {
 
   (async () => {
     try {
+      if (dataObj.image && dataObj.image.length > 400000) dataObj.image = await compressImageDataUrl(dataObj.image);
       if (tollState.currentEditingId) {
         await apiUpdateRecord(tollState.currentEditingId, dataObj);
       } else {
@@ -1704,6 +1708,7 @@ function saveChargeForm(e) {
 
   (async () => {
     try {
+      if (dataObj.image && dataObj.image.length > 400000) dataObj.image = await compressImageDataUrl(dataObj.image);
       if (chargeState.currentEditingId) {
         await apiUpdateRecord(chargeState.currentEditingId, dataObj);
       } else {
