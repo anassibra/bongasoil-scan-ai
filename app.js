@@ -880,6 +880,7 @@ function captureTollPhoto() {
 
 async function runTollExtraction(imageDataUrl) {
   tollState.tempImage = imageDataUrl;
+  compressImageDataUrl(imageDataUrl).then(small => { tollState.tempImage = small; });
   showToast("🧠 Lecture du ticket en cours...", "info");
 
   try {
@@ -1591,6 +1592,7 @@ function captureChargePhoto() {
 
 async function runChargeExtraction(imageDataUrl) {
   chargeState.tempImage = imageDataUrl;
+  compressImageDataUrl(imageDataUrl).then(small => { chargeState.tempImage = small; });
   showToast("🧠 Lecture du recu en cours...", "info");
 
   try {
